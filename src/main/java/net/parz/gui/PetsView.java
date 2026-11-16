@@ -20,6 +20,7 @@ import net.parz.skyblock.SkyBlockDetector;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -33,11 +34,11 @@ public final class PetsView {
 	private static final int MAX_H = 330;
 	private static final int ROW_H = 17;
 	private static final int ROW_STEP = 19;
-	private static final Pattern PET_NAME = Pattern.compile("^\\[Lvl \\d+] .+");
+	private static final Pattern PET_NAME = Pattern.compile("^([^\\[]{0,4})\\[Lvl \\d+] .+");
 	private static final Pattern TITLE = Pattern.compile("^(\\(\\d+/\\d+\\)\\s*)?Pets(\\s.*)?$");
 	private static final Pattern FORMATTING = Pattern.compile("§.");
 
-	private record Entry(Slot slot, ItemStack stack, boolean pet) {
+	private record Entry(Slot slot, ItemStack stack, boolean pet, boolean favorite) {
 	}
 
 	private record Hit(int x1, int y1, int x2, int y2, Runnable action) {
@@ -95,10 +96,12 @@ public final class PetsView {
 				continue;
 			}
 			String name = clean(stack.getHoverName().getString()).trim();
-			if (PET_NAME.matcher(name).matches()) {
-				list.add(new Entry(slot, stack, true));
+			Matcher pet = PET_NAME.matcher(name);
+			if (pet.matches()) {
+				// a favourite pet has a star in front: "★ [Lvl 200] Golden Dragon"
+				list.add(new Entry(slot, stack, true, !pet.group(1).isBlank()));
 			} else if (!name.isEmpty() && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("glass_pane")) {
-				list.add(new Entry(slot, stack, false));
+				list.add(new Entry(slot, stack, false, false));
 			}
 		}
 		return list;
@@ -147,6 +150,8 @@ public final class PetsView {
 		for (Entry entry : entries(container)) {
 			(entry.pet() ? pets : controls).add(entry);
 		}
+		// favourite pets (with a star) are at the top of the pet list, the other pets keep the menu order
+		pets.sort(java.util.Comparator.comparing((Entry entry) -> !entry.favorite()));
 		// Previous Page and Next Page first and next to each other, everything else keeps the menu order
 		controls.sort(java.util.Comparator.comparingInt(PetsView::controlOrder));
 
