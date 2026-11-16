@@ -34,6 +34,7 @@ public final class PetsView {
 	private static final int ROW_H = 17;
 	private static final int ROW_STEP = 19;
 	private static final Pattern PET_NAME = Pattern.compile("^\\[Lvl \\d+] .+");
+	private static final Pattern TITLE = Pattern.compile("^(\\(\\d+/\\d+\\)\\s*)?Pets(\\s.*)?$");
 	private static final Pattern FORMATTING = Pattern.compile("§.");
 
 	private record Entry(Slot slot, ItemStack stack, boolean pet) {
@@ -64,7 +65,8 @@ public final class PetsView {
 				|| !SkyBlockDetector.featuresActive()) {
 			return false;
 		}
-		if (!clean(screen.getTitle().getString()).startsWith("Pets")) {
+		// "Pets" or, with several pages, "(1/4) Pets"
+		if (!TITLE.matcher(clean(screen.getTitle().getString()).trim()).matches()) {
 			return false;
 		}
 		for (Entry entry : entries(container)) {
