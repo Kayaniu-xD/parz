@@ -50,6 +50,9 @@ public final class PetsView {
 	private static BookStyle.Frame frame = null;
 	private static int lastContainerId = -1;
 	private static int selectedSlot = -1;
+	private static final long DOUBLE_CLICK_MS = 400;
+	private static int lastClickSlot = -1;
+	private static long lastClickMs = 0;
 	private static double listScroll;
 	private static int listMaxScroll;
 	private static double detailScroll;
@@ -199,8 +202,17 @@ public final class PetsView {
 
 			int slotIndex = pet.slot().index;
 			HITS.add(new Hit(x1, y, x2 - 6, y + ROW_H, () -> {
+				// one click selects the pet, a double click summons / despawns it
+				long now = System.currentTimeMillis();
+				boolean doubleClick = slotIndex == lastClickSlot && now - lastClickMs <= DOUBLE_CLICK_MS;
+				lastClickSlot = slotIndex;
+				lastClickMs = now;
 				selectedSlot = slotIndex;
 				detailScroll = 0;
+				if (doubleClick) {
+					lastClickSlot = -1;
+					click((AbstractContainerScreen<?>) screen, pet.slot(), 0);
+				}
 			}));
 			y += ROW_STEP;
 		}
