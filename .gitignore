@@ -1,20 +1,39 @@
-# gradle
+# gradle / build output
 .gradle/
 build/
 out/
 classes/
+bin/
 
-# idea
+# jars are build output (only the gradle wrapper jar is needed)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# ide / editor
 .idea/
 *.iml
 *.ipr
 *.iws
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+*.code-workspace
 
-# fabric
+# minecraft / fabric dev run
 run/
+logs/
+crash-reports/
+hs_err_pid*.log
+*.log
 
-# claude code (local settings)
-.claude/settings.local.json
+# secrets
+.env
+.env.*
+
+# claude code (local settings and permissions)
+.claude/
 
 # os
 .DS_Store
