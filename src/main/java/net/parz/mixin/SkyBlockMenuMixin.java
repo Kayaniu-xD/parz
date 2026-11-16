@@ -20,7 +20,7 @@ public abstract class SkyBlockMenuMixin {
 	@Shadow
 	protected Slot hoveredSlot;
 
-	@Inject(method = "extractSlot", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "extractSlot(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/inventory/Slot;II)V", at = @At("HEAD"), cancellable = true)
 	private void parz$drawButton(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
 		if (SkyBlockMenuButton.isButton((Screen) (Object) this, slot)) {
 			SkyBlockMenuButton.draw(graphics, slot.x, slot.y, slot == this.hoveredSlot);
@@ -28,7 +28,7 @@ public abstract class SkyBlockMenuMixin {
 		}
 	}
 
-	@Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), cancellable = true)
 	private void parz$clickButton(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
 		if (SkyBlockMenuButton.isButton((Screen) (Object) this, slot)) {
 			SkyBlockMenuButton.open();
@@ -36,7 +36,7 @@ public abstract class SkyBlockMenuMixin {
 		}
 	}
 
-	@Inject(method = "extractTooltip", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "extractTooltip(Lnet/minecraft/client/gui/GuiGraphicsExtractor;II)V", at = @At("HEAD"), cancellable = true)
 	private void parz$tooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY, CallbackInfo ci) {
 		if (SkyBlockMenuButton.isButton((Screen) (Object) this, this.hoveredSlot)) {
 			SkyBlockMenuButton.drawTooltip(graphics, mouseX, mouseY);

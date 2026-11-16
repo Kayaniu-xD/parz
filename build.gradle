@@ -3,8 +3,14 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
+// Extra builds for other Minecraft versions run from variants/mc<version>/ with -Pmc_variant=<version>
+// (see the buildMcVariants task at the bottom). The normal build has no mc_variant.
+def mcVariant = project.findProperty('mc_variant')
+
 version = project.mod_version
 group = project.maven_group
+// version written into fabric.mod.json (always the plain mod version, also for the variants)
+ext.jsonVersion = project.mod_version
 
 base {
 	archivesName = project.archives_base_name
@@ -31,10 +37,18 @@ loom {
 }
 
 processResources {
-	inputs.property "version", provider { project.version.toString() }
+	inputs.property "version", provider { project.ext.jsonVersion.toString() }
+	inputs.property "mc", project.minecraft_version
 
 	filesMatching("fabric.mod.json") {
-		expand "version": project.version
+		expand "version": project.ext.jsonVersion, "mc": project.minecraft_version
+	}
+}
+
+if (mcVariant) {
+	// parz-1.0.12-mc26.3.jar
+	tasks.named('jar') {
+		archiveClassifier = "mc${mcVariant}".toString()
 	}
 }
 
@@ -49,202 +63,279 @@ java {
 	targetCompatibility = JavaVersion.VERSION_25
 }
 
-// ---- automatic versioning ---------------------------------------------------------
-// Every `gradlew build` (or `jar`) after a change in src/ raises mod_version in
-// gradle.properties by 0.0.1 and produces a new jar (e.g. parz-1.0.7.jar). Without any
-// change in src/ the version stays the same. Every jar is also copied to releases/.
-def modPropsFile = file('gradle.properties')
-def sourceHashFile = file('.gradle/parz-source-hash')
+// Versioning, jar archive, GitHub upload: only in the normal build, never in a variant build.
+if (!mcVariant) {
 
-def computeSourceHash = {
-	def digest = java.security.MessageDigest.getInstance('SHA-256')
-	fileTree('src').files.sort { it.path }.each { f ->
-		digest.update(projectDir.toPath().relativize(f.toPath()).toString().replace('\\', '/').getBytes('UTF-8'))
-		digest.update(f.bytes)
-	}
-	return digest.digest().encodeHex().toString()
-}
+	// ---- automatic versioning ---------------------------------------------------------
+	// Every `gradlew build` (or `jar`) after a change in src/ raises mod_version in
+	// gradle.properties by 0.0.1 and produces a new jar (e.g. parz-1.0.7.jar). Without any
+	// change in src/ the version stays the same. Every jar is also copied to releases/.
+	def modPropsFile = file('gradle.properties')
+	def sourceHashFile = file('.gradle/parz-source-hash')
 
-// .gradle/parz-source-hash holds two lines: the source hash and the version of the last
-// SUCCESSFUL build. The next version is always derived from that, so a failed build never
-// uses up a version number.
-def pendingHash = null
-
-gradle.taskGraph.whenReady { graph ->
-	if (!graph.hasTask(':jar') && !graph.hasTask(':build')) {
-		return
-	}
-	def currentHash = computeSourceHash()
-	pendingHash = currentHash
-	def propsText = modPropsFile.getText('UTF-8')
-	def propsMatcher = propsText =~ /(?m)^mod_version\s*=\s*(\d+\.\d+\.\d+)\s*$/
-	if (!propsMatcher.find()) {
-		return
-	}
-	def propsVersion = propsMatcher.group(1)
-	def stored = sourceHashFile.exists() ? sourceHashFile.readLines('UTF-8') : []
-	def storedHash = stored.size() > 0 ? stored[0].trim() : null
-	def storedVersion = stored.size() > 1 ? stored[1].trim() : propsVersion
-
-	def targetVersion = storedVersion
-	if (storedHash != null && storedHash != currentHash) {
-		def parts = storedVersion.tokenize('.')
-		targetVersion = "${parts[0]}.${parts[1]}.${parts[2].toInteger() + 1}"
-	}
-	if (targetVersion != propsVersion) {
-		modPropsFile.setText(propsText.replaceFirst(/(?m)^mod_version\s*=.*$/, "mod_version=${targetVersion}"), 'UTF-8')
-		logger.lifecycle("Parz version is now ${targetVersion}")
-	}
-	project.version = targetVersion
-}
-
-tasks.named('jar') {
-	doLast {
-		if (pendingHash != null) {
-			sourceHashFile.parentFile.mkdirs()
-			sourceHashFile.setText(pendingHash + System.lineSeparator() + project.version, 'UTF-8')
+	def computeSourceHash = {
+		def digest = java.security.MessageDigest.getInstance('SHA-256')
+		fileTree('src').files.sort { it.path }.each { f ->
+			digest.update(projectDir.toPath().relativize(f.toPath()).toString().replace('\\', '/').getBytes('UTF-8'))
+			digest.update(f.bytes)
 		}
+		return digest.digest().encodeHex().toString()
 	}
-}
 
-tasks.register('copyReleaseJar', Copy) {
-	from(tasks.named('jar'))
-	into(layout.projectDirectory.dir('releases'))
-}
+	// .gradle/parz-source-hash holds two lines: the source hash and the version of the last
+	// SUCCESSFUL build. The next version is always derived from that, so a failed build never
+	// uses up a version number.
+	def pendingHash = null
 
-// Old versions in build/libs are moved into build/libs/Müll as soon as a new one is built.
-tasks.register('archiveOldJars') {
-	doLast {
-		def libs = layout.buildDirectory.dir('libs').get().asFile
-		def trash = new File(libs, 'Müll')
-		def current = ["${base.archivesName.get()}-${project.version}.jar".toString(),
-					   "${base.archivesName.get()}-${project.version}-sources.jar".toString()]
-		(libs.listFiles() ?: new File[0]).findAll { it.isFile() && it.name.endsWith('.jar') && !(it.name in current) }.each { old ->
-			trash.mkdirs()
-			java.nio.file.Files.move(old.toPath(), new File(trash, old.name).toPath(),
-					java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-			logger.lifecycle("Moved ${old.name} to Müll")
-		}
-	}
-}
-
-// ---- only the newest 3 versions are kept -----------------------------------------------
-def compareVersions = { String a, String b ->
-	def pa = a.tokenize('.').collect { it.toInteger() }
-	def pb = b.tokenize('.').collect { it.toInteger() }
-	for (int i = 0; i < Math.max(pa.size(), pb.size()); i++) {
-		int x = i < pa.size() ? pa[i] : 0
-		int y = i < pb.size() ? pb[i] : 0
-		if (x != y) {
-			return x <=> y
-		}
-	}
-	return 0
-}
-
-// Deletes the jars of every version except the newest 3 (releases/, build/libs and build/libs/Müll).
-tasks.register('pruneOldVersions') {
-	mustRunAfter 'copyReleaseJar', 'archiveOldJars'
-	doLast {
-		def jarPattern = java.util.regex.Pattern.compile('^' + java.util.regex.Pattern.quote(base.archivesName.get()) + '-(\\d+\\.\\d+\\.\\d+)(-sources)?\\.jar$')
-		def libs = layout.buildDirectory.dir('libs').get().asFile
-		def dirs = [file('releases'), libs, new File(libs, 'Müll')]
-		def found = []
-		dirs.each { dir ->
-			(dir.listFiles() ?: new File[0]).each { f ->
-				def m = jarPattern.matcher(f.name)
-				if (f.isFile() && m.matches()) {
-					found << [file: f, version: m.group(1)]
-				}
-			}
-		}
-		def versions = found.collect { it.version }.unique().sort { a, b -> compareVersions(b, a) }
-		def keep = versions.take(3)
-		found.findAll { !(it.version in keep) }.each {
-			it.file.delete()
-			logger.lifecycle("Deleted old version ${it.file.name}")
-		}
-	}
-}
-
-// ---- upload to GitHub -------------------------------------------------------------------
-// After a build of a version that is not on GitHub yet: commit + push the mod files, create the release
-// v<version> with the jar attached and delete releases older than the newest 3.
-// Never fails the build (offline, not logged in, ...). Skip it with: gradlew build -PnoPublish
-tasks.register('publishRelease') {
-	mustRunAfter 'copyReleaseJar', 'archiveOldJars', 'pruneOldVersions'
-	doLast {
-		if (project.hasProperty('noPublish')) {
-			logger.lifecycle('GitHub upload skipped (-PnoPublish)')
+	gradle.taskGraph.whenReady { graph ->
+		if (!graph.hasTask(':jar') && !graph.hasTask(':build')) {
 			return
 		}
-		def ghExe = new File('C:/Program Files/GitHub CLI/gh.exe').exists() ? 'C:/Program Files/GitHub CLI/gh.exe' : 'gh'
-		def run = { List<String> cmd ->
-			try {
-				def process = new ProcessBuilder(cmd).directory(projectDir).redirectErrorStream(true).start()
-				def out = process.inputStream.getText('UTF-8')
-				return [process.waitFor(), out.trim()]
-			} catch (Exception e) {
-				return [-1, String.valueOf(e.message)]
-			}
+		def currentHash = computeSourceHash()
+		pendingHash = currentHash
+		def propsText = modPropsFile.getText('UTF-8')
+		def propsMatcher = propsText =~ /(?m)^mod_version\s*=\s*(\d+\.\d+\.\d+)\s*$/
+		if (!propsMatcher.find()) {
+			return
 		}
-		def version = project.version.toString()
-		def tag = "v${version}".toString()
-		def jarFile = tasks.named('jar').get().archiveFile.get().asFile
-		try {
-			def view = run([ghExe, 'release', 'view', tag])
-			if (view[0] != 0) {
-				if (!view[1].contains('release not found')) {
-					logger.warn("GitHub upload skipped: ${view[1]}")
-					return
-				}
-				// the commit must never carry the real email address
-				def email = run(['git', 'config', 'user.email'])[1]
-				if (!email.contains('noreply')) {
-					logger.warn('GitHub upload skipped: git user.email in this repository is not the GitHub noreply address')
-					return
-				}
-				def paths = ['src', 'build.gradle', 'settings.gradle', 'gradle.properties', '.gitignore'].findAll { file(it).exists() }
-				run(['git', 'add', '--'] + paths)
-				if (run(['git', 'diff', '--cached', '--quiet'])[0] != 0) {
-					def commit = run(['git', 'commit', '-m', "Release ${tag}".toString()])
-					if (commit[0] != 0) {
-						logger.warn("GitHub upload stopped: commit failed: ${commit[1]}")
-						return
-					}
-				}
-				def push = run(['git', 'push', 'origin', 'HEAD'])
-				if (push[0] != 0) {
-					logger.warn("GitHub upload stopped: push failed: ${push[1]}")
-					return
-				}
-				def sha = run(['git', 'rev-parse', 'HEAD'])[1]
-				def create = run([ghExe, 'release', 'create', tag, jarFile.absolutePath, '--target', sha,
-								  '--title', "Parz ${version}".toString(), '--notes', "Automatic build of Parz ${version}.".toString()])
-				if (create[0] != 0) {
-					logger.warn("GitHub release failed: ${create[1]}")
-					return
-				}
-				logger.lifecycle("Uploaded ${tag} to GitHub: ${create[1]}")
-			}
+		def propsVersion = propsMatcher.group(1)
+		def stored = sourceHashFile.exists() ? sourceHashFile.readLines('UTF-8') : []
+		def storedHash = stored.size() > 0 ? stored[0].trim() : null
+		def storedVersion = stored.size() > 1 ? stored[1].trim() : propsVersion
 
-			// delete releases older than the newest 3
-			def list = run([ghExe, 'release', 'list', '--limit', '100', '--json', 'tagName'])
-			if (list[0] == 0) {
-				def tags = new groovy.json.JsonSlurper().parseText(list[1]).collect { it.tagName as String }
-						.findAll { it ==~ /v\d+\.\d+\.\d+/ }
-						.sort { a, b -> compareVersions(b.substring(1), a.substring(1)) }
-				tags.drop(3).each { old ->
-					def del = run([ghExe, 'release', 'delete', old, '--yes', '--cleanup-tag'])
-					logger.lifecycle(del[0] == 0 ? "Deleted old GitHub release ${old}" : "Could not delete ${old}: ${del[1]}")
-				}
+		def targetVersion = storedVersion
+		if (storedHash != null && storedHash != currentHash) {
+			def parts = storedVersion.tokenize('.')
+			targetVersion = "${parts[0]}.${parts[1]}.${parts[2].toInteger() + 1}"
+		}
+		if (targetVersion != propsVersion) {
+			modPropsFile.setText(propsText.replaceFirst(/(?m)^mod_version\s*=.*$/, "mod_version=${targetVersion}"), 'UTF-8')
+			logger.lifecycle("Parz version is now ${targetVersion}")
+		}
+		project.version = targetVersion
+		project.ext.jsonVersion = targetVersion
+	}
+
+	tasks.named('jar') {
+		doLast {
+			if (pendingHash != null) {
+				sourceHashFile.parentFile.mkdirs()
+				sourceHashFile.setText(pendingHash + System.lineSeparator() + project.version, 'UTF-8')
 			}
-		} catch (Exception e) {
-			logger.warn("GitHub upload failed: ${e.message}")
 		}
 	}
-}
 
-tasks.named('build') {
-	finalizedBy 'copyReleaseJar', 'archiveOldJars', 'pruneOldVersions', 'publishRelease'
+	tasks.register('copyReleaseJar', Copy) {
+		from(tasks.named('jar'))
+		into(layout.projectDirectory.dir('releases'))
+	}
+
+	// Old versions in build/libs are moved into build/libs/Müll as soon as a new one is built.
+	tasks.register('archiveOldJars') {
+		doLast {
+			def libs = layout.buildDirectory.dir('libs').get().asFile
+			def trash = new File(libs, 'Müll')
+			def current = ["${base.archivesName.get()}-${project.version}.jar".toString(),
+						   "${base.archivesName.get()}-${project.version}-sources.jar".toString()]
+			(libs.listFiles() ?: new File[0]).findAll { it.isFile() && it.name.endsWith('.jar') && !(it.name in current) }.each { old ->
+				trash.mkdirs()
+				java.nio.file.Files.move(old.toPath(), new File(trash, old.name).toPath(),
+						java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+				logger.lifecycle("Moved ${old.name} to Müll")
+			}
+		}
+	}
+
+	// ---- only the newest 3 versions are kept -----------------------------------------------
+	def compareVersions = { String a, String b ->
+		def pa = a.tokenize('.').collect { it.toInteger() }
+		def pb = b.tokenize('.').collect { it.toInteger() }
+		for (int i = 0; i < Math.max(pa.size(), pb.size()); i++) {
+			int x = i < pa.size() ? pa[i] : 0
+			int y = i < pb.size() ? pb[i] : 0
+			if (x != y) {
+				return x <=> y
+			}
+		}
+		return 0
+	}
+
+	// Deletes the jars of every version except the newest 3 (releases/, build/libs and build/libs/Müll).
+	tasks.register('pruneOldVersions') {
+		mustRunAfter 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants'
+		doLast {
+			def jarPattern = java.util.regex.Pattern.compile('^' + java.util.regex.Pattern.quote(base.archivesName.get()) + '-(\\d+\\.\\d+\\.\\d+)(-mc[\\d.]+)?(-sources)?\\.jar$')
+			def libs = layout.buildDirectory.dir('libs').get().asFile
+			def dirs = [file('releases'), libs, new File(libs, 'Müll')]
+			def found = []
+			dirs.each { dir ->
+				(dir.listFiles() ?: new File[0]).each { f ->
+					def m = jarPattern.matcher(f.name)
+					if (f.isFile() && m.matches()) {
+						found << [file: f, version: m.group(1)]
+					}
+				}
+			}
+			def versions = found.collect { it.version }.unique().sort { a, b -> compareVersions(b, a) }
+			def keep = versions.take(3)
+			found.findAll { !(it.version in keep) }.each {
+				it.file.delete()
+				logger.lifecycle("Deleted old version ${it.file.name}")
+			}
+		}
+	}
+
+	// ---- upload to GitHub -------------------------------------------------------------------
+	// After a build of a version that is not on GitHub yet: commit + push the mod files, create the release
+	// v<version> with the jar attached and delete releases older than the newest 3.
+	// Never fails the build (offline, not logged in, ...). Skip it with: gradlew build -PnoPublish
+	tasks.register('publishRelease') {
+		mustRunAfter 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants', 'pruneOldVersions'
+		doLast {
+			if (project.hasProperty('noPublish')) {
+				logger.lifecycle('GitHub upload skipped (-PnoPublish)')
+				return
+			}
+			def ghExe = new File('C:/Program Files/GitHub CLI/gh.exe').exists() ? 'C:/Program Files/GitHub CLI/gh.exe' : 'gh'
+			def run = { List<String> cmd ->
+				try {
+					def process = new ProcessBuilder(cmd).directory(projectDir).redirectErrorStream(true).start()
+					def out = process.inputStream.getText('UTF-8')
+					return [process.waitFor(), out.trim()]
+				} catch (Exception e) {
+					return [-1, String.valueOf(e.message)]
+				}
+			}
+			def version = project.version.toString()
+			def tag = "v${version}".toString()
+			def jarFile = tasks.named('jar').get().archiveFile.get().asFile
+			// jars for the other Minecraft versions (parz-<version>-mc26.3.jar) are attached to the same release
+			def extraJars = (file('releases').listFiles() ?: new File[0]).findAll {
+				it.name.startsWith("parz-${version}-mc".toString()) && it.name.endsWith('.jar') && !it.name.contains('sources')
+			}
+			try {
+				def view = run([ghExe, 'release', 'view', tag])
+				if (view[0] != 0) {
+					if (!view[1].contains('release not found')) {
+						logger.warn("GitHub upload skipped: ${view[1]}")
+						return
+					}
+					// the commit must never carry the real email address
+					def email = run(['git', 'config', 'user.email'])[1]
+					if (!email.contains('noreply')) {
+						logger.warn('GitHub upload skipped: git user.email in this repository is not the GitHub noreply address')
+						return
+					}
+					def paths = ['src', 'build.gradle', 'settings.gradle', 'gradle.properties', '.gitignore'].findAll { file(it).exists() }
+					run(['git', 'add', '--'] + paths)
+					if (run(['git', 'diff', '--cached', '--quiet'])[0] != 0) {
+						def commit = run(['git', 'commit', '-m', "Release ${tag}".toString()])
+						if (commit[0] != 0) {
+							logger.warn("GitHub upload stopped: commit failed: ${commit[1]}")
+							return
+						}
+					}
+					def push = run(['git', 'push', 'origin', 'HEAD'])
+					if (push[0] != 0) {
+						logger.warn("GitHub upload stopped: push failed: ${push[1]}")
+						return
+					}
+					def sha = run(['git', 'rev-parse', 'HEAD'])[1]
+					def notes = "Automatic build of Parz ${version}.\n\nparz-${version}.jar = Minecraft 26.2\nparz-${version}-mc<version>.jar = that Minecraft version".toString()
+					def create = run([ghExe, 'release', 'create', tag, jarFile.absolutePath] + extraJars.collect { it.absolutePath } +
+									 ['--target', sha, '--title', "Parz ${version}".toString(), '--notes', notes])
+					if (create[0] != 0) {
+						logger.warn("GitHub release failed: ${create[1]}")
+						return
+					}
+					logger.lifecycle("Uploaded ${tag} to GitHub: ${create[1]}")
+				}
+
+				// release exists already: add jars for other Minecraft versions that are missing on it
+				if (view[0] == 0 && extraJars) {
+					def have = run([ghExe, 'release', 'view', tag, '--json', 'assets', '--jq', '.assets[].name'])[1].readLines()
+					extraJars.findAll { !(it.name in have) }.each { extra ->
+						def up = run([ghExe, 'release', 'upload', tag, extra.absolutePath, '--clobber'])
+						logger.lifecycle(up[0] == 0 ? "Added ${extra.name} to ${tag}" : "Could not upload ${extra.name}: ${up[1]}")
+					}
+				}
+
+				// delete releases older than the newest 3
+				def list =run([ghExe, 'release', 'list', '--limit', '100', '--json', 'tagName'])
+				if (list[0] == 0) {
+					def tags = new groovy.json.JsonSlurper().parseText(list[1]).collect { it.tagName as String }
+							.findAll { it ==~ /v\d+\.\d+\.\d+/ }
+							.sort { a, b -> compareVersions(b.substring(1), a.substring(1)) }
+					tags.drop(3).each { old ->
+						def del = run([ghExe, 'release', 'delete', old, '--yes', '--cleanup-tag'])
+						logger.lifecycle(del[0] == 0 ? "Deleted old GitHub release ${old}" : "Could not delete ${old}: ${del[1]}")
+					}
+				}
+			} catch (Exception e) {
+				logger.warn("GitHub upload failed: ${e.message}")
+			}
+		}
+	}
+
+	// ---- builds for other Minecraft versions -------------------------------------------------
+	// Every build also produces parz-<version>-mc<minecraft>.jar for these Minecraft versions. Each one is built
+	// by a second Gradle run in variants/mc<minecraft>/ (a copy of src/ with another minecraft_version and
+	// Fabric API) and the jar is copied to releases/. Skipped when releases/ already has that jar for this
+	// version; a failing variant never fails the normal build.
+	def mcVariants = [
+			[mc: '26.3', api: '0.166.2+26.3'],
+	]
+
+	tasks.register('buildMcVariants') {
+		mustRunAfter 'copyReleaseJar', 'archiveOldJars'
+		doLast {
+			def version = project.version.toString()
+			def mainProps = modPropsFile.getText('UTF-8')
+			mcVariants.each { variant ->
+				def target = file("releases/parz-${version}-mc${variant.mc}.jar")
+				if (target.exists()) {
+					return
+				}
+				def dir = file("variants/mc${variant.mc}")
+				try {
+					dir.mkdirs()
+					project.sync {
+						from 'src'
+						into new File(dir, 'src')
+					}
+					java.nio.file.Files.copy(file('build.gradle').toPath(), new File(dir, 'build.gradle').toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					java.nio.file.Files.copy(file('settings.gradle').toPath(), new File(dir, 'settings.gradle').toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					def props = mainProps
+							.replaceFirst(/(?m)^minecraft_version\s*=.*$/, "minecraft_version=${variant.mc}")
+							.replaceFirst(/(?m)^fabric_api_version\s*=.*$/, "fabric_api_version=${variant.api}")
+					new File(dir, 'gradle.properties').setText(props + "\nmc_variant=${variant.mc}\n", 'UTF-8')
+
+					def windows = System.getProperty('os.name').toLowerCase().contains('win')
+					def command = windows ?
+							['cmd', '/c', new File(projectDir, 'gradlew.bat').absolutePath, '-p', dir.absolutePath, 'build', '-q', '--console=plain'] :
+							[new File(projectDir, 'gradlew').absolutePath, '-p', dir.absolutePath, 'build', '-q', '--console=plain']
+					def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
+					def out = process.inputStream.getText('UTF-8')
+					if (process.waitFor() != 0) {
+						logger.warn("Build for Minecraft ${variant.mc} failed:\n${out}")
+						return
+					}
+					def built = new File(dir, "build/libs/parz-${version}-mc${variant.mc}.jar")
+					if (!built.exists()) {
+						logger.warn("Build for Minecraft ${variant.mc} produced no ${built.name}")
+						return
+					}
+					java.nio.file.Files.copy(built.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+					logger.lifecycle("Built ${target.name} for Minecraft ${variant.mc}")
+				} catch (Exception e) {
+					logger.warn("Build for Minecraft ${variant.mc} failed: ${e.message}")
+				}
+			}
+		}
+	}
+
+	tasks.named('build') {
+		finalizedBy 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants', 'pruneOldVersions', 'publishRelease'
+	}
+
 }

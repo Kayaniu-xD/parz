@@ -44,6 +44,9 @@ public final class ModUpdater {
 	private static final String REPO = "Kayaniu-xD/parz";
 	private static final String LATEST_URL = "https://api.github.com/repos/" + REPO + "/releases/latest";
 
+	/** Minecraft version of the jars without "-mc<version>" in their name (older releases and the main build). */
+	private static final String PLAIN_ASSET_MINECRAFT = "26.2";
+
 	public enum Status {
 		IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, READY, ERROR
 	}
@@ -254,15 +257,42 @@ public final class ModUpdater {
 		JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 		String tag = root.get("tag_name").getAsString();
 		JsonArray assets = root.has("assets") ? root.getAsJsonArray("assets") : new JsonArray();
+		// A release holds one jar per Minecraft version: parz-1.0.12.jar (the plain name = Minecraft 26.2)
+		// and parz-1.0.12-mc26.3.jar. Pick the one for the Minecraft that is running.
+		String minecraft = runningMinecraft();
+		JsonObject plain = null;
+		JsonObject matching = null;
 		for (JsonElement element : assets) {
 			JsonObject asset = element.getAsJsonObject();
 			String name = asset.get("name").getAsString();
-			if (name.endsWith(".jar") && !name.endsWith("-sources.jar") && !name.endsWith("-dev.jar")) {
-				return new Release(tag, tag.startsWith("v") ? tag.substring(1) : tag, name,
-						asset.get("browser_download_url").getAsString());
+			if (!name.endsWith(".jar") || name.endsWith("-sources.jar") || name.endsWith("-dev.jar")) {
+				continue;
+			}
+			if (name.endsWith("-mc" + minecraft + ".jar")) {
+				matching = asset;
+			} else if (!name.contains("-mc")) {
+				plain = asset;
 			}
 		}
-		throw new UpdateException("Release " + tag + " has no mod jar");
+		if (matching == null && plain != null && minecraft.equals(PLAIN_ASSET_MINECRAFT)) {
+			matching = plain;
+		}
+		if (matching == null) {
+			throw new UpdateException("Release " + tag + " has no jar for Minecraft " + minecraft);
+		}
+		return new Release(tag, tag.startsWith("v") ? tag.substring(1) : tag, matching.get("name").getAsString(),
+				matching.get("browser_download_url").getAsString());
+	}
+
+	/** The Minecraft version that is running, e.g. "26.2". */
+	private static String runningMinecraft() {
+		try {
+			return FabricLoader.getInstance().getModContainer("minecraft")
+					.map(c -> c.getMetadata().getVersion().getFriendlyString())
+					.orElse(PLAIN_ASSET_MINECRAFT);
+		} catch (Throwable t) {
+			return PLAIN_ASSET_MINECRAFT;
+		}
 	}
 
 	private static void download(Release release, Path target) throws Exception {

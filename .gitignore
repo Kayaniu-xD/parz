@@ -43,3 +43,6 @@ hs_err_pid*.log
 # os
 .DS_Store
 Thumbs.db
+
+# extra Minecraft version builds
+variants/
