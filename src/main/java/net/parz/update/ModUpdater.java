@@ -478,6 +478,8 @@ public final class ModUpdater {
 	}
 
 	private static void tell(Consumer<Component> chat, String text) {
-		Minecraft.getInstance().execute(() -> chat.accept(Component.literal("[Parz] " + text)));
+		// green, only failures are red
+		ChatFormatting color = text.startsWith("Update failed") ? ChatFormatting.RED : ChatFormatting.GREEN;
+		Minecraft.getInstance().execute(() -> chat.accept(Component.literal("[Parz] " + text).withStyle(color)));
 	}
 }
