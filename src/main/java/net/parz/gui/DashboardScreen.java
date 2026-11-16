@@ -1,15 +1,14 @@
 package net.parz.gui;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.parz.config.ParzConfigDefinition;
 import net.parz.dashboard.DashboardData;
-import net.parz.dashboard.DashboardData.Goal;
 import net.parz.dashboard.DashboardData.Skill;
 import net.parz.dashboard.DashboardTracker;
+import net.parz.dashboard.PlaytimeFormat;
 import net.parz.hud.HudTrackers;
 
 import java.util.ArrayList;
@@ -19,7 +18,7 @@ import java.util.Locale;
 
 /**
  * SkyBlock Personal Dashboard (/parz-dash): a card grid for all skills and
- * collections (data from the tab list and /collection), plus goals and stats.
+ * collections (data from the tab list and /collection), plus stats.
  * Clicking a card pins it to the HUD.
  */
 public class DashboardScreen extends Screen {
@@ -67,14 +66,10 @@ public class DashboardScreen extends Screen {
 	private final List<Hit> fixedHits = new ArrayList<>();
 	private final List<Hit> contentHits = new ArrayList<>();
 
-	/** "Skills", a collection category, "Goals" or "Stats". */
+	/** "Skills", a collection category or "Stats". */
 	private static String lastTab = "Skills";
 	private static Sort sort = Sort.AZ;
 	private String tab = lastTab;
-
-	private EditBox nameBox;
-	private EditBox targetBox;
-	private EditBox reminderBox;
 
 	private double scroll;
 	private int maxScroll;
@@ -91,7 +86,6 @@ public class DashboardScreen extends Screen {
 		List<String> list = new ArrayList<>();
 		list.add("Skills");
 		list.addAll(DashboardData.get().categories());
-		list.add("Goals");
 		list.add("Stats");
 		return list;
 	}
@@ -108,48 +102,6 @@ public class DashboardScreen extends Screen {
 		conY1 = py + 44;
 		conY2 = py + ph - 18;
 
-		// input row for goals
-		int inputY = conY1 + 7;
-		int addW = 70, smallW = 50;
-		int nameW = (conX2 - conX1) - addW - smallW * 2 - 40;
-		int x = conX1 + 8;
-		String oldName = nameBox != null ? nameBox.getValue() : "";
-		String oldTarget = targetBox != null ? targetBox.getValue() : "";
-		String oldReminder = reminderBox != null ? reminderBox.getValue() : "";
-		nameBox = createBox(x, inputY, nameW, 64, oldName, false);
-		x += nameW + 8;
-		targetBox = createBox(x, inputY, smallW, 9, oldTarget, true);
-		x += smallW + 8;
-		reminderBox = createBox(x, inputY, smallW, 5, oldReminder, true);
-		updateInputVisibility();
-	}
-
-	private EditBox createBox(int x, int y, int w, int maxLength, String value, boolean numbersOnly) {
-		EditBox box = new EditBox(this.font, x, y, w, 10, Component.empty());
-		box.setBordered(false);
-		box.setMaxLength(maxLength);
-		if (numbersOnly) {
-			// only allow digits: remove everything else as soon as it is typed
-			box.setResponder(text -> {
-				String digits = text.replaceAll("[^0-9]", "");
-				if (!digits.equals(text)) {
-					box.setValue(digits);
-				}
-			});
-		}
-		box.setValue(value);
-		this.addWidget(box);
-		return box;
-	}
-
-	private void updateInputVisibility() {
-		boolean visible = "Goals".equals(tab);
-		nameBox.visible = visible;
-		targetBox.visible = visible;
-		reminderBox.visible = visible;
-		if (!visible) {
-			this.setFocused(null);
-		}
 	}
 
 	private void switchTab(String newTab) {
@@ -157,7 +109,6 @@ public class DashboardScreen extends Screen {
 			tab = newTab;
 			lastTab = newTab;
 			scroll = 0;
-			updateInputVisibility();
 		}
 	}
 
@@ -179,7 +130,7 @@ public class DashboardScreen extends Screen {
 		graphics.text(font, title, px + (pw - font.width(title)) / 2, py + 7, 0xFFFFFFFF, true);
 
 		// sort button (only for card grids)
-		boolean grid = !"Goals".equals(tab) && !"Stats".equals(tab);
+		boolean grid = !"Stats".equals(tab);
 		if (grid) {
 			int bw = 34;
 			int bx2 = px + pw - 8, bx1 = bx2 - bw, by1 = py + 4, by2 = py + 18;
@@ -194,11 +145,6 @@ public class DashboardScreen extends Screen {
 		drawBox(graphics, conX1, conY1, conX2, conY2);
 
 		int top = conY1;
-		if ("Goals".equals(tab)) {
-			drawGoalInput(graphics, mouseX, mouseY, delta);
-			top = conY1 + 24;
-			graphics.fill(conX1 + 4, top, conX2 - 4, top + 1, BOX_BORDER_LIGHT);
-		}
 
 		int startY = top + 5;
 		int y = startY - (int) scroll;
@@ -206,8 +152,6 @@ public class DashboardScreen extends Screen {
 		graphics.enableScissor(conX1 + 1, top + 1, conX2 - 1, conY2 - 1);
 		if ("Skills".equals(tab)) {
 			y = drawSkillGrid(graphics, y, mouseX, mouseY, mouseIn);
-		} else if ("Goals".equals(tab)) {
-			y = drawGoals(graphics, conX1 + 5, conX2 - 9, y, mouseX, mouseY, mouseIn);
 		} else if ("Stats".equals(tab)) {
 			y = drawStats(graphics, conX1 + 5, conX2 - 9, y);
 		} else {
@@ -223,7 +167,7 @@ public class DashboardScreen extends Screen {
 		// footer hint
 		String hint = grid
 				? "Click a card to pin/unpin it on your HUD  -  /parz hud to move HUD trackers"
-				: "Goals and stats are saved automatically";
+				: "Stats are saved automatically";
 		graphics.text(font, trim(hint, pw - 16), px + 8, py + ph - 13, TEXT_DIM, true);
 	}
 
@@ -473,125 +417,10 @@ public class DashboardScreen extends Screen {
 		};
 	}
 
-	// ---- Goals ------------------------------------------------------------------------
-
-	private void drawGoalInput(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		drawInput(graphics, nameBox, "New goal / to-do...", mouseX, mouseY, delta);
-		drawInput(graphics, targetBox, "Target", mouseX, mouseY, delta);
-		drawInput(graphics, reminderBox, "Remind min", mouseX, mouseY, delta);
-
-		int bx1 = reminderBox.getX() + reminderBox.getWidth() + 8;
-		int by1 = nameBox.getY() - 3;
-		int bx2 = conX2 - 8;
-		int by2 = by1 + 14;
-		boolean hovered = isInside(mouseX, mouseY, bx1, by1, bx2, by2);
-		graphics.fill(bx1, by1, bx2, by2, hovered ? 0xFF3A7A3A : 0xFF2E5E2E);
-		graphics.outline(bx1, by1, bx2 - bx1, by2 - by1, 0xFF4FAF4F);
-		String label = "+ Add";
-		graphics.text(font, label, (bx1 + bx2 - font.width(label)) / 2, by1 + 3, 0xFFFFFFFF, true);
-		fixedHits.add(new Hit(bx1, by1, bx2, by2, this::addGoalFromInput));
-	}
-
-	private void drawInput(GuiGraphicsExtractor graphics, EditBox box, String hint, int mouseX, int mouseY, float delta) {
-		int x1 = box.getX() - 4, y1 = box.getY() - 3, x2 = box.getX() + box.getWidth() + 2, y2 = box.getY() + 11;
-		graphics.fill(x1, y1, x2, y2, 0xFF101014);
-		graphics.outline(x1, y1, x2 - x1, y2 - y1, box.isFocused() ? 0xFFAAAAAA : BOX_BORDER_LIGHT);
-		if (box.getValue().isEmpty() && !box.isFocused()) {
-			graphics.text(font, hint, box.getX(), box.getY(), 0xFF6A6A6A, false);
-		}
-		box.extractRenderState(graphics, mouseX, mouseY, delta);
-	}
-
-	private void addGoalFromInput() {
-		String name = nameBox.getValue().trim();
-		if (name.isEmpty()) {
-			this.setFocused(nameBox);
-			return;
-		}
-		DashboardData.get().addGoal(name, parseLong(targetBox.getValue()), (int) parseLong(reminderBox.getValue()));
-		nameBox.setValue("");
-		targetBox.setValue("");
-		reminderBox.setValue("");
-		this.setFocused(null);
-	}
-
-	private int drawGoals(GuiGraphicsExtractor graphics, int x1, int x2, int y, int mouseX, int mouseY, boolean mouseIn) {
-		DashboardData data = DashboardData.get();
-		if (data.goals.isEmpty()) {
-			centered(graphics, "No goals yet. Type a goal above and click + Add.", y + 6, TEXT_DIM);
-			centered(graphics, "Target (optional): e.g. 1000000 coins.  Remind (optional): minutes.", y + 20, TEXT_DIM);
-			return y + 34;
-		}
-		List<Goal> sorted = new ArrayList<>(data.goals);
-		sorted.sort(Comparator.comparing((Goal g) -> g.done));
-		for (Goal goal : sorted) {
-			y += drawGoalRow(graphics, goal, x1, x2, y, mouseX, mouseY, mouseIn) + 3;
-		}
-		return y;
-	}
-
-	private int drawGoalRow(GuiGraphicsExtractor graphics, Goal goal, int x1, int x2, int y,
-							int mouseX, int mouseY, boolean mouseIn) {
-		DashboardData data = DashboardData.get();
-		boolean hasTarget = goal.target > 0;
-		int height = hasTarget ? 34 : 20;
-		boolean hovered = mouseIn && isInside(mouseX, mouseY, x1, y, x2, y + height);
-		graphics.fill(x1, y, x2, y + height, hovered ? ELEMENT_BG_HOVER : ELEMENT_BG);
-		graphics.outline(x1, y, x2 - x1, height, ELEMENT_BORDER);
-
-		int cx = x1 + 6, cy = y + 5;
-		graphics.fill(cx, cy, cx + 10, cy + 10, 0xFF101010);
-		graphics.fill(cx + 1, cy + 1, cx + 9, cy + 9, goal.done ? 0xFF3FCF3F : 0xFF3A3A3A);
-		if (goal.done) {
-			graphics.text(font, "✔", cx + 2, cy + 1, 0xFF0A2A0A, false);
-		}
-		contentHits.add(new Hit(cx - 2, cy - 2, cx + 12, cy + 12, () -> data.setDone(goal, !goal.done)));
-
-		int deleteX = x2 - 14;
-		String reminder = goal.reminderMinutes > 0 && !goal.done ? "Reminder: every " + goal.reminderMinutes + " min" : "";
-		int reminderW = reminder.isEmpty() ? 0 : font.width(reminder) + 8;
-		String name = trim(goal.name, deleteX - (cx + 16) - reminderW - 4);
-		graphics.text(font, name, cx + 16, cy + 1, goal.done ? TEXT_DIM : TEXT, true);
-		if (goal.done) {
-			graphics.fill(cx + 16, cy + 5, cx + 16 + font.width(name), cy + 6, TEXT_DIM);
-		}
-		if (!reminder.isEmpty()) {
-			graphics.text(font, reminder, deleteX - reminderW, cy + 1, GOLD, true);
-		}
-		boolean delHover = mouseIn && isInside(mouseX, mouseY, deleteX - 2, cy - 2, deleteX + 10, cy + 11);
-		graphics.text(font, "✖", deleteX, cy + 1, delHover ? 0xFFFF7777 : 0xFFD83A3A, true);
-		contentHits.add(new Hit(deleteX - 2, cy - 2, deleteX + 10, cy + 11, () -> data.removeGoal(goal)));
-
-		if (hasTarget) {
-			int barY = y + 21;
-			int barX = cx + 16;
-			int buttonsW = 4 * 22;
-			int textW = 110;
-			int barW = Math.max(40, (x2 - 8) - buttonsW - textW - barX);
-			bar(graphics, barX, barY, barW, goal.progress(), goal.done ? 0xFF3FCF3F : BLUE);
-			String progressText = HudTrackers.shortNumber(goal.current) + " / " + HudTrackers.shortNumber(goal.target)
-					+ " (" + String.format(Locale.ROOT, "%.0f", goal.progress() * 100) + "%)";
-			graphics.text(font, trim(progressText, textW - 6), barX + barW + 6, barY - 1, TEXT, true);
-			int bx = x2 - 6 - buttonsW;
-			for (long step : new long[]{-10, -1, 1, 10}) {
-				String label = (step > 0 ? "+" : "") + step;
-				boolean bHover = mouseIn && isInside(mouseX, mouseY, bx, barY - 2, bx + 20, barY + 9);
-				graphics.fill(bx, barY - 2, bx + 20, barY + 9, bHover ? 0xFF4A4B55 : 0xFF3A3B45);
-				graphics.text(font, label, bx + (20 - font.width(label)) / 2, barY, step > 0 ? 0xFF3FCF3F : 0xFFD83A3A, false);
-				contentHits.add(new Hit(bx, barY - 2, bx + 20, barY + 9, () -> data.changeProgress(goal, step)));
-				bx += 22;
-			}
-		}
-		return height;
-	}
-
 	// ---- Stats ------------------------------------------------------------------------
 
 	private int drawStats(GuiGraphicsExtractor graphics, int x1, int x2, int y) {
 		DashboardData data = DashboardData.get();
-		long totalGoals = data.goals.size();
-		long done = data.doneGoals();
-		long reminders = data.goals.stream().filter(g -> !g.done && g.reminderMinutes > 0).count();
 		List<DashboardData.Collection> all = new ArrayList<>(data.collections.values());
 		long scanned = all.stream().filter(c -> !"UNKNOWN".equals(c.status)).count();
 		long maxed = all.stream().filter(c -> "MAXED".equals(c.status)).count();
@@ -599,14 +428,6 @@ public class DashboardScreen extends Screen {
 		double sessionXp = data.skills.values().stream().mapToDouble(s -> s.sessionXp).sum();
 		double avgLevel = data.skills.values().stream().filter(s -> s.level >= 0 && !"Runecrafting".equals(s.name)
 				&& !"Social".equals(s.name)).mapToInt(s -> s.level).average().orElse(0);
-
-		y = statSection(graphics, "Goals", x1, x2, y, new String[][]{
-				{"Goals total", String.valueOf(totalGoals)},
-				{"Done", done + (totalGoals > 0 ? "  (" + (done * 100 / totalGoals) + "%)" : "")},
-				{"Open", String.valueOf(data.openGoals())},
-				{"Completed all time", String.valueOf(data.goalsCompletedTotal)},
-				{"Active reminders", String.valueOf(reminders)}
-		});
 
 		List<String[]> skillRows = new ArrayList<>();
 		skillRows.add(new String[]{"Skill average", String.format(Locale.ROOT, "%.2f", avgLevel)});
@@ -628,9 +449,10 @@ public class DashboardScreen extends Screen {
 				{"Missing (not maxed)", String.valueOf(scanned - maxed)},
 				{"Locked", String.valueOf(locked)}
 		});
-		long minutes = (System.currentTimeMillis() - DashboardData.SESSION_START) / 60_000;
-		y = statSection(graphics, "Session", x1, x2, y, new String[][]{
-				{"Playtime", (minutes / 60) + "h " + (minutes % 60) + "min"}
+		long session = DashboardData.sessionPlaytimeMs();
+		y = statSection(graphics, "Playtime", x1, x2, y, new String[][]{
+				{"This session", PlaytimeFormat.format(session)},
+				{"Total playtime", PlaytimeFormat.format(data.totalPlaytimeMs())}
 		});
 		return y;
 	}
@@ -694,7 +516,7 @@ public class DashboardScreen extends Screen {
 				return true;
 			}
 		}
-		int top = "Goals".equals(tab) ? conY1 + 24 : conY1;
+		int top = conY1;
 		if (isInside(mx, my, conX1, top, conX2, conY2)) {
 			for (Hit hit : List.copyOf(contentHits)) {
 				if (hit.contains(mx, my)) {
@@ -735,14 +557,6 @@ public class DashboardScreen extends Screen {
 			result = result.substring(0, result.length() - 1);
 		}
 		return result + "...";
-	}
-
-	private static long parseLong(String text) {
-		try {
-			return text.isBlank() ? 0 : Long.parseLong(text.trim());
-		} catch (NumberFormatException e) {
-			return 0;
-		}
 	}
 
 	private static boolean isInside(double x, double y, int x1, int y1, int x2, int y2) {

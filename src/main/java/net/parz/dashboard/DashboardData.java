@@ -45,10 +45,10 @@ public final class DashboardData {
 	private static final Set<String> ICON_DECODE_FAILED = new HashSet<>();
 
 	// ---- saved data -------------------------------------------------------------
-	public List<Goal> goals = new ArrayList<>();
 	public Map<String, Skill> skills = new LinkedHashMap<>();
 	public Map<String, Collection> collections = new LinkedHashMap<>();
-	public int goalsCompletedTotal = 0;
+	/** Total time played with Minecraft in a world, in milliseconds (all sessions, kept between restarts). */
+	public long playtimeMs = 0;
 	/** Pinned HUD trackers: "skill:farming" or "col:wheat". */
 	public List<String> hudPinned = new ArrayList<>();
 	/** HUD positions per tracker key: [x, y]. */
@@ -59,22 +59,6 @@ public final class DashboardData {
 	public Map<String, String> categorySummary = new HashMap<>();
 	/** Minecraft name the skills and collections belong to. */
 	public String username = "";
-
-	public static final class Goal {
-		public String name = "";
-		public long target = 0;
-		public long current = 0;
-		public boolean done = false;
-		public int reminderMinutes = 0;
-		public long lastReminder = 0;
-		public long created = System.currentTimeMillis();
-
-		public float progress() {
-			if (done) return 1f;
-			if (target <= 0) return 0f;
-			return Math.min(1f, (float) current / (float) target);
-		}
-	}
 
 	public static final class Skill {
 		public String name = "";
@@ -252,7 +236,6 @@ public final class DashboardData {
 			}
 		}
 		instance = loaded != null ? loaded : new DashboardData();
-		if (instance.goals == null) instance.goals = new ArrayList<>();
 		if (instance.skills == null) instance.skills = new LinkedHashMap<>();
 		if (instance.collections == null) instance.collections = new LinkedHashMap<>();
 		if (instance.hudPinned == null) instance.hudPinned = new ArrayList<>();
@@ -266,7 +249,7 @@ public final class DashboardData {
 	/**
 	 * Remembers which Minecraft account the skills and collections belong to. If a different
 	 * account is playing now, the old skills and collections are deleted and start fresh
-	 * (goals and HUD layout are kept).
+	 * (the HUD layout is kept).
 	 */
 	public static void ensureAccount(String name) {
 		if (name == null || name.isBlank()) {
@@ -458,49 +441,24 @@ public final class DashboardData {
 		return key.startsWith("col:") ? collections.get(key.substring(4)) : null;
 	}
 
-	// ---- goal helpers -------------------------------------------------------------
+	// ---- playtime -----------------------------------------------------------------
 
-	public void addGoal(String name, long target, int reminderMinutes) {
-		Goal goal = new Goal();
-		goal.name = name;
-		goal.target = Math.max(0, target);
-		goal.reminderMinutes = Math.max(0, reminderMinutes);
-		goal.lastReminder = System.currentTimeMillis();
-		goals.add(goal);
-		save();
+	/** Playtime of all sessions including the one that is running now (not yet added). */
+	public long totalPlaytimeMs() {
+		return playtimeMs;
 	}
 
-	public void setDone(Goal goal, boolean done) {
-		if (goal.done == done) return;
-		goal.done = done;
-		if (done) {
-			goalsCompletedTotal++;
-			if (goal.target > 0) goal.current = Math.max(goal.current, goal.target);
-		}
-		save();
+	/** Playtime of the running game session (in a world), not saved. */
+	private static long sessionPlaytimeMs = 0;
+
+	public static long sessionPlaytimeMs() {
+		return sessionPlaytimeMs;
 	}
 
-	public void changeProgress(Goal goal, long amount) {
-		goal.current = Math.max(0, goal.current + amount);
-		if (goal.target > 0 && goal.current >= goal.target && !goal.done) {
-			setDone(goal, true);
-		} else {
-			if (goal.target > 0 && goal.current < goal.target && goal.done) goal.done = false;
-			save();
-		}
-	}
-
-	public void removeGoal(Goal goal) {
-		goals.remove(goal);
-		save();
-	}
-
-	public long openGoals() {
-		return goals.stream().filter(g -> !g.done).count();
-	}
-
-	public long doneGoals() {
-		return goals.stream().filter(g -> g.done).count();
+	public static void addPlaytime(long ms) {
+		ms = Math.max(0, ms);
+		instance.playtimeMs += ms;
+		sessionPlaytimeMs += ms;
 	}
 
 	public List<Collection> collectionsIn(String category) {

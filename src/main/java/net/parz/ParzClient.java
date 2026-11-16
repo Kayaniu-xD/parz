@@ -87,7 +87,7 @@ public class ParzClient implements ClientModInitializer {
 		LOGGER.info("Parz loaded - use /parz, /parz hud, /parz update and /parz-dash");
 	}
 
-	/** Writes the settings and the dashboard data (skills, collections, goals, HUD) to disk. */
+	/** Writes the settings and the dashboard data (skills, collections, playtime, HUD) to disk. */
 	public static synchronized void saveAll() {
 		try {
 			ParzConfig.save();

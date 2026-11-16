@@ -3,7 +3,6 @@ package net.parz.dashboard;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -34,7 +33,6 @@ import java.util.regex.Pattern;
  * - Skill levels + % from the TAB LIST ("Farming 50: 45.3%")
  * - Skill XP gains from the action bar ("+12.5 Farming (1,234/5,000)") -> XP per hour
  * - Collections from the /collection menus
- * - Reminders for your own goals
  */
 public final class DashboardTracker {
 	private static final String SKILL_NAMES = "Farming|Mining|Combat|Foraging|Fishing|Enchanting|Alchemy|Taming|Carpentry|Runecrafting|Social|Hunting";
@@ -62,6 +60,8 @@ public final class DashboardTracker {
 
 	private static int tickCounter = 0;
 	private static boolean dirty = false;
+	private static long lastPlaytimeTick = 0;
+	private static long lastPlaytimeSave = 0;
 	/** "collections" / "skills" while that menu is open, otherwise null. */
 	private static String openMenu = null;
 
@@ -77,6 +77,7 @@ public final class DashboardTracker {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			tickCounter++;
+			countPlaytime(client);
 			// changes are written to disk shortly after they happen (also if SkyBlock
 			// detection is off), so nothing is lost on a crash or when the game closes
 			if (tickCounter % 40 == 0) {
@@ -91,9 +92,26 @@ public final class DashboardTracker {
 			}
 			if (tickCounter % 20 == 0) {
 				readTabList(client);
-				checkReminders(client);
 			}
 		});
+	}
+
+	/** Adds the time spent in a world to the playtime that is saved in config/parz-dashboard.json. */
+	private static void countPlaytime(Minecraft client) {
+		long now = System.currentTimeMillis();
+		if (client.player == null) {
+			lastPlaytimeTick = 0;
+			return;
+		}
+		if (lastPlaytimeTick > 0) {
+			// a long freeze counts as at most 5 seconds
+			DashboardData.addPlaytime(Math.min(now - lastPlaytimeTick, 5_000L));
+		}
+		lastPlaytimeTick = now;
+		if (now - lastPlaytimeSave >= 60_000L) {
+			lastPlaytimeSave = now;
+			dirty = true;
+		}
 	}
 
 	/** Marks the dashboard data as changed so it is written to disk soon. */
@@ -370,33 +388,6 @@ public final class DashboardTracker {
 			}
 		}
 		return lines;
-	}
-
-	// ---- reminders ----------------------------------------------------------------
-
-	private static void checkReminders(Minecraft client) {
-		if (client.player == null) {
-			return;
-		}
-		long now = System.currentTimeMillis();
-		boolean changed = false;
-		for (DashboardData.Goal goal : DashboardData.get().goals) {
-			if (goal.done || goal.reminderMinutes <= 0) {
-				continue;
-			}
-			if (now - goal.lastReminder >= goal.reminderMinutes * 60_000L) {
-				goal.lastReminder = now;
-				changed = true;
-				String progress = goal.target > 0 ? " (" + goal.current + "/" + goal.target + ")" : "";
-				client.gui.toastManager().addToast(new SystemToast(
-						SystemToast.SystemToastId.NARRATOR_TOGGLE,
-						Component.literal("Parz Reminder"),
-						Component.literal(goal.name + progress)));
-			}
-		}
-		if (changed) {
-			DashboardData.save();
-		}
 	}
 
 	// ---- helpers ----------------------------------------------------------------------
