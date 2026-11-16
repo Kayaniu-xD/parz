@@ -62,6 +62,8 @@ public final class DashboardTracker {
 
 	private static int tickCounter = 0;
 	private static boolean dirty = false;
+	/** "collections" / "skills" while that menu is open, otherwise null. */
+	private static String openMenu = null;
 
 	private DashboardTracker() {
 	}
@@ -75,6 +77,11 @@ public final class DashboardTracker {
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			tickCounter++;
+			// changes are written to disk shortly after they happen (also if SkyBlock
+			// detection is off), so nothing is lost on a crash or when the game closes
+			if (tickCounter % 40 == 0) {
+				saveIfDirty();
+			}
 			if (!SkyBlockDetector.featuresActive()) {
 				return;
 			}
@@ -86,11 +93,20 @@ public final class DashboardTracker {
 				readTabList(client);
 				checkReminders(client);
 			}
-			if (tickCounter % 40 == 0 && dirty) {
-				dirty = false;
-				DashboardData.save();
-			}
 		});
+	}
+
+	/** Marks the dashboard data as changed so it is written to disk soon. */
+	public static void markDirty() {
+		dirty = true;
+	}
+
+	/** Writes pending changes to config/parz-dashboard.json right now. */
+	public static void saveIfDirty() {
+		if (dirty) {
+			dirty = false;
+			DashboardData.save();
+		}
 	}
 
 	// ---- skills: tab list -------------------------------------------------------------
@@ -184,15 +200,22 @@ public final class DashboardTracker {
 
 	private static void scanMenus(Minecraft client) {
 		Screen screen = client.gui.screen();
-		if (!(screen instanceof AbstractContainerScreen<?> containerScreen)) {
-			return;
+		String kind = null;
+		if (screen instanceof AbstractContainerScreen<?> containerScreen) {
+			String title = clean(screen.getTitle().getString()).trim();
+			if (title.contains("Collection")) {
+				kind = "collections";
+				scanCollectionMenu(containerScreen, title);
+			} else if (title.contains("Skills")) {
+				kind = "skills";
+				scanSkillsMenu(containerScreen);
+			}
 		}
-		String title = clean(screen.getTitle().getString()).trim();
-		if (title.contains("Collection")) {
-			scanCollectionMenu(containerScreen, title);
-		} else if (title.contains("Skills")) {
-			scanSkillsMenu(containerScreen);
+		// the skills / collections menu was just closed: write everything it showed to disk
+		if (kind == null && openMenu != null) {
+			saveIfDirty();
 		}
+		openMenu = kind;
 	}
 
 	/** /skills ("Your Skills"): level, % and XP of every skill. */
@@ -300,7 +323,9 @@ public final class DashboardTracker {
 			}
 			if (!locked) {
 				c.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-				DashboardData.CAPTURED_ITEMS.put(key, stack.copy());
+				if (DashboardData.captureIcon(c, key, stack)) {
+					dirty = true;
+				}
 			}
 			c.tierNumber = tier;
 			if (hasTotal) {

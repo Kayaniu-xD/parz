@@ -21,6 +21,9 @@ import java.util.Locale;
 public final class HudTrackers {
 	public static final int WIDTH = 150;
 	public static final int HEIGHT = 41;
+	public static final float MIN_SCALE = 0.5f;
+	public static final float MAX_SCALE = 3.0f;
+	public static final float SCALE_STEP = 0.1f;
 
 	private HudTrackers() {
 	}
@@ -49,18 +52,52 @@ public final class HudTrackers {
 		}
 	}
 
+	/** Size of a tracker (1.0 = normal). */
+	public static float scale(String key) {
+		Float scale = DashboardData.get().hudScales.get(key);
+		return scale == null ? 1f : Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+	}
+
+	/** Makes a tracker bigger (steps > 0) or smaller (steps < 0). */
+	public static void changeScale(String key, int steps) {
+		float scale = Math.round((scale(key) + steps * SCALE_STEP) * 10f) / 10f;
+		DashboardData.get().hudScales.put(key, Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)));
+	}
+
+	public static int scaledWidth(String key) {
+		return Math.round(WIDTH * scale(key));
+	}
+
+	public static int scaledHeight(String key) {
+		return Math.round(HEIGHT * scale(key));
+	}
+
 	/** Position of a tracker (default: stacked in the top-left corner), clamped to the screen. */
 	public static int[] position(String key, int index, int screenW, int screenH) {
 		int[] pos = DashboardData.get().hudPositions.get(key);
+		int defaultY = 4;
+		List<String> pinned = DashboardData.get().hudPinned;
+		for (int i = 0; i < index && i < pinned.size(); i++) {
+			defaultY += scaledHeight(pinned.get(i)) + 3;
+		}
 		int x = pos != null ? pos[0] : 4;
-		int y = pos != null ? pos[1] : 4 + index * (HEIGHT + 3);
-		x = Math.max(0, Math.min(screenW - WIDTH, x));
-		y = Math.max(0, Math.min(screenH - HEIGHT, y));
+		int y = pos != null ? pos[1] : defaultY;
+		x = Math.max(0, Math.min(screenW - scaledWidth(key), x));
+		y = Math.max(0, Math.min(screenH - scaledHeight(key), y));
 		return new int[]{x, y};
 	}
 
-	/** Draws one tracker box. */
+	/** Draws one tracker box (x, y = top left corner) in its size. */
 	public static void draw(GuiGraphicsExtractor graphics, Font font, String key, int x, int y) {
+		float scale = scale(key);
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x, y);
+		graphics.pose().scale(scale, scale);
+		drawUnscaled(graphics, font, key, 0, 0);
+		graphics.pose().popMatrix();
+	}
+
+	private static void drawUnscaled(GuiGraphicsExtractor graphics, Font font, String key, int x, int y) {
 		DashboardData data = DashboardData.get();
 		graphics.fill(x, y, x + WIDTH, y + HEIGHT, 0xA0101014);
 		graphics.outline(x, y, WIDTH, HEIGHT, 0x80555560);

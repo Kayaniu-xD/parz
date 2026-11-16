@@ -29,8 +29,8 @@ public class HudEditorScreen extends Screen {
 
 		// move the element that is being dragged
 		if (dragging != null) {
-			int x = Math.max(0, Math.min(this.width - HudTrackers.WIDTH, mouseX - grabOffsetX));
-			int y = Math.max(0, Math.min(this.height - HudTrackers.HEIGHT, mouseY - grabOffsetY));
+			int x = Math.max(0, Math.min(this.width - HudTrackers.scaledWidth(dragging), mouseX - grabOffsetX));
+			int y = Math.max(0, Math.min(this.height - HudTrackers.scaledHeight(dragging), mouseY - grabOffsetY));
 			data.hudPositions.put(dragging, new int[]{x, y});
 		}
 
@@ -38,16 +38,20 @@ public class HudEditorScreen extends Screen {
 			String key = pinned.get(i);
 			int[] pos = HudTrackers.position(key, i, this.width, this.height);
 			HudTrackers.draw(graphics, this.font, key, pos[0], pos[1]);
-			boolean hovered = isOver(mouseX, mouseY, pos);
+			boolean hovered = isOver(mouseX, mouseY, key, pos);
 			int color = key.equals(dragging) ? 0xFF55FFFF : hovered ? 0xFFFFFFFF : 0xFFFFAA00;
-			graphics.outline(pos[0] - 1, pos[1] - 1, HudTrackers.WIDTH + 2, HudTrackers.HEIGHT + 2, color);
+			graphics.outline(pos[0] - 1, pos[1] - 1, HudTrackers.scaledWidth(key) + 2, HudTrackers.scaledHeight(key) + 2, color);
+			if (hovered || key.equals(dragging)) {
+				String size = Math.round(HudTrackers.scale(key) * 100) + "%";
+				graphics.text(font, size, pos[0], Math.max(0, pos[1] - 11), 0xFF55FFFF, true);
+			}
 		}
 
 		String title = "Parz HUD Editor";
 		graphics.text(font, title, (this.width - font.width(title)) / 2, this.height / 2 - 30, 0xFFA87BFF, true);
 		String hint = pinned.isEmpty()
 				? "No trackers pinned. Open /parz-dash and click a skill or collection card."
-				: "Drag the trackers to move them. Press ESC to save.";
+				: "Drag a tracker to move it, scroll over it to resize it. Press ESC to save.";
 		graphics.text(font, hint, (this.width - font.width(hint)) / 2, this.height / 2 - 16, 0xFFE0E0E0, true);
 
 		String reset = "[ Reset positions ]";
@@ -57,9 +61,28 @@ public class HudEditorScreen extends Screen {
 		graphics.text(font, reset, rx, ry, resetHover ? 0xFFFF7777 : 0xFFD83A3A, true);
 	}
 
-	private boolean isOver(double mouseX, double mouseY, int[] pos) {
-		return mouseX >= pos[0] && mouseX < pos[0] + HudTrackers.WIDTH
-				&& mouseY >= pos[1] && mouseY < pos[1] + HudTrackers.HEIGHT;
+	private boolean isOver(double mouseX, double mouseY, String key, int[] pos) {
+		return mouseX >= pos[0] && mouseX < pos[0] + HudTrackers.scaledWidth(key)
+				&& mouseY >= pos[1] && mouseY < pos[1] + HudTrackers.scaledHeight(key);
+	}
+
+	/** Mouse wheel over a tracker: bigger / smaller. */
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		List<String> pinned = DashboardData.get().hudPinned;
+		for (int i = pinned.size() - 1; i >= 0; i--) {
+			String key = pinned.get(i);
+			int[] pos = HudTrackers.position(key, i, this.width, this.height);
+			if (isOver(mouseX, mouseY, key, pos)) {
+				if (scrollY != 0) {
+					// pin the current position so the tracker grows from its top left corner
+					DashboardData.get().hudPositions.put(key, pos);
+					HudTrackers.changeScale(key, scrollY > 0 ? 1 : -1);
+				}
+				return true;
+			}
+		}
+		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
 	@Override
@@ -75,6 +98,7 @@ public class HudEditorScreen extends Screen {
 		int ry = this.height / 2;
 		if (mx >= rx && mx < rx + font.width(reset) && my >= ry - 2 && my < ry + 10) {
 			DashboardData.get().hudPositions.clear();
+			DashboardData.get().hudScales.clear();
 			DashboardData.save();
 			return true;
 		}
@@ -84,7 +108,7 @@ public class HudEditorScreen extends Screen {
 		for (int i = pinned.size() - 1; i >= 0; i--) {
 			String key = pinned.get(i);
 			int[] pos = HudTrackers.position(key, i, this.width, this.height);
-			if (isOver(mx, my, pos)) {
+			if (isOver(mx, my, key, pos)) {
 				dragging = key;
 				grabOffsetX = (int) mx - pos[0];
 				grabOffsetY = (int) my - pos[1];

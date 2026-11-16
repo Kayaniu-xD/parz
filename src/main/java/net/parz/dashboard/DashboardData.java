@@ -2,7 +2,14 @@ package net.parz.dashboard;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.item.ItemStack;
 import net.parz.ParzClient;
 import net.parz.skyblock.HypixelResources;
@@ -14,10 +21,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Everything the dashboard and the HUD show. Saved in config/parz-dashboard.json.
@@ -33,6 +42,7 @@ public final class DashboardData {
 
 	/** Real items captured from /collection this session (heads keep their texture). */
 	public static final Map<String, ItemStack> CAPTURED_ITEMS = new HashMap<>();
+	private static final Set<String> ICON_DECODE_FAILED = new HashSet<>();
 
 	// ---- saved data -------------------------------------------------------------
 	public List<Goal> goals = new ArrayList<>();
@@ -43,8 +53,12 @@ public final class DashboardData {
 	public List<String> hudPinned = new ArrayList<>();
 	/** HUD positions per tracker key: [x, y]. */
 	public Map<String, int[]> hudPositions = new HashMap<>();
+	/** HUD size per tracker key (1.0 = normal), changed with the mouse wheel in /parz hud. */
+	public Map<String, Float> hudScales = new HashMap<>();
 	/** Summary per category from the main /collections menu, e.g. "Maxed 12/17 - Unlocked 100%". */
 	public Map<String, String> categorySummary = new HashMap<>();
+	/** Minecraft name the skills and collections belong to. */
+	public String username = "";
 
 	public static final class Goal {
 		public String name = "";
@@ -122,6 +136,8 @@ public final class DashboardData {
 		public String name = "";
 		public String category = "";
 		public String itemId = "";
+		/** The real item (e.g. a player head with its texture) as JSON, so the icon survives a restart. */
+		public String iconData = "";
 		/** Tier as number (0 = none/locked). */
 		public int tierNumber = 0;
 		public double total = 0;
@@ -137,6 +153,46 @@ public final class DashboardData {
 			if ("MAXED".equals(status)) return 1f;
 			if (percent >= 0) return (float) Math.min(1.0, percent / 100.0);
 			return 0f;
+		}
+
+		/**
+		 * Sets the collected amount and recalculates tier, progress and status from the
+		 * tier table of the Hypixel API (used when items are gained or lost between menu visits).
+		 */
+		public void setTotal(double newTotal) {
+			total = Math.max(0, newTotal);
+			HypixelResources.CollectionInfo info = HypixelResources.collection(name);
+			if (info != null && info.tierAmounts().length > 0 && info.maxTier() > 0) {
+				int tier = 0;
+				for (int t = 1; t <= info.tierAmounts().length; t++) {
+					if (total >= info.amountForTier(t)) {
+						tier = t;
+					}
+				}
+				tierNumber = tier;
+				if (tier >= info.maxTier()) {
+					status = "MAXED";
+					percent = 100;
+					current = total;
+					needed = 0;
+				} else {
+					if (!("LOCKED".equals(status) && total <= 0)) {
+						status = "PROGRESS";
+					}
+					needed = info.amountForTier(tier + 1);
+					current = total;
+					percent = needed > 0 ? Math.min(100, total / needed * 100) : -1;
+				}
+			} else {
+				// no tier table: only move the numbers we know
+				if ("LOCKED".equals(status) && total > 0) {
+					status = "PROGRESS";
+				}
+				if ("PROGRESS".equals(status) && needed > 0) {
+					current = total;
+					percent = Math.min(100, total / needed * 100);
+				}
+			}
 		}
 
 		/** Amount needed for the last tier (-1 if unknown). */
@@ -188,9 +244,37 @@ public final class DashboardData {
 		if (instance.collections == null) instance.collections = new LinkedHashMap<>();
 		if (instance.hudPinned == null) instance.hudPinned = new ArrayList<>();
 		if (instance.hudPositions == null) instance.hudPositions = new HashMap<>();
+		if (instance.hudScales == null) instance.hudScales = new HashMap<>();
 		if (instance.categorySummary == null) instance.categorySummary = new HashMap<>();
 		instance.fillCatalog();
 		applyHypixelResources();
+	}
+
+	/**
+	 * Remembers which Minecraft account the skills and collections belong to. If a different
+	 * account is playing now, the old skills and collections are deleted and start fresh
+	 * (goals and HUD layout are kept).
+	 */
+	public static void ensureAccount(String name) {
+		if (name == null || name.isBlank()) {
+			return;
+		}
+		DashboardData data = instance;
+		boolean otherAccount = data.username != null && !data.username.isEmpty() && !data.username.equalsIgnoreCase(name);
+		if (otherAccount) {
+			ParzClient.LOGGER.info("Account changed ({} -> {}): removing the old skills and collections", data.username, name);
+			data.skills.clear();
+			data.collections.clear();
+			data.categorySummary.clear();
+			CAPTURED_ITEMS.clear();
+			ICON_DECODE_FAILED.clear();
+			data.fillCatalog();
+			applyHypixelResources();
+		}
+		if (otherAccount || !name.equals(data.username)) {
+			data.username = name;
+			save();
+		}
 	}
 
 	/** Makes sure every known skill and collection exists (so the grid shows all of them). */
@@ -203,6 +287,9 @@ public final class DashboardData {
 			Skill skill = skills.computeIfAbsent(e.key(), k -> new Skill());
 			skill.name = e.name();
 		}
+		for (int floor = 1; floor <= 7; floor++) {
+			dungeonEntry(floor);
+		}
 		for (List<SkyBlockCatalog.Entry> list : SkyBlockCatalog.COLLECTIONS.values()) {
 			for (SkyBlockCatalog.Entry e : list) {
 				Collection c = collections.computeIfAbsent(e.key(), k -> new Collection());
@@ -213,6 +300,41 @@ public final class DashboardData {
 				}
 			}
 		}
+	}
+
+	// ---- dungeon floor completions ------------------------------------------------
+
+	public static final String DUNGEON_CATEGORY = "Dungeons";
+	private static final String[] FLOOR_NAMES = {"", "I", "II", "III", "IV", "V", "VI", "VII"};
+
+	public static String dungeonName(int floor) {
+		return "Catacombs Floor " + FLOOR_NAMES[floor];
+	}
+
+	/** The completion counter of a Catacombs floor (1-7); created on demand. */
+	private Collection dungeonEntry(int floor) {
+		Collection c = collections.computeIfAbsent(dungeonName(floor).toLowerCase(Locale.ROOT), k -> new Collection());
+		c.name = dungeonName(floor);
+		c.category = DUNGEON_CATEGORY;
+		c.itemId = "skeleton_skull";
+		if (!"PROGRESS".equals(c.status)) {
+			c.status = "PROGRESS";
+		}
+		c.needed = 0;
+		c.percent = -1;
+		c.tierNumber = (int) c.total;
+		return c;
+	}
+
+	/** Counts finished dungeon runs (normal floor +1, Master Mode floor +2). */
+	public static void addDungeonCompletion(int floor, int amount) {
+		if (floor < 1 || floor > 7) {
+			return;
+		}
+		Collection c = instance.dungeonEntry(floor);
+		c.total += amount;
+		c.tierNumber = (int) c.total;
+		c.lastUpdate = System.currentTimeMillis();
 	}
 
 	/**
@@ -251,8 +373,65 @@ public final class DashboardData {
 	// ---- items --------------------------------------------------------------------
 
 	public static ItemStack iconFor(Collection c) {
-		ItemStack captured = CAPTURED_ITEMS.get(c.name.toLowerCase(Locale.ROOT));
+		String key = c.name.toLowerCase(Locale.ROOT);
+		ItemStack captured = CAPTURED_ITEMS.get(key);
+		if (captured == null && c.iconData != null && !c.iconData.isEmpty() && !ICON_DECODE_FAILED.contains(key)) {
+			captured = decodeIcon(c.iconData);
+			if (captured != null) {
+				CAPTURED_ITEMS.put(key, captured);
+			} else {
+				ICON_DECODE_FAILED.add(key);
+			}
+		}
 		return captured != null ? captured : SkyBlockCatalog.stack(c.itemId);
+	}
+
+	/**
+	 * Remembers the real item of a collection (kept in memory and saved to disk).
+	 * Returns true if the saved icon changed.
+	 */
+	public static boolean captureIcon(Collection c, String key, ItemStack stack) {
+		ItemStack icon = stack.copy();
+		icon.remove(DataComponents.LORE); // lore is huge and not needed for the icon
+		ItemStack old = CAPTURED_ITEMS.put(key, icon);
+		boolean hasSaved = c.iconData != null && !c.iconData.isEmpty();
+		if (old != null && hasSaved && ItemStack.isSameItemSameComponents(old, icon)) {
+			return false;
+		}
+		String encoded = encodeIcon(icon);
+		if (encoded.isEmpty() || encoded.equals(c.iconData)) {
+			return false;
+		}
+		c.iconData = encoded;
+		ICON_DECODE_FAILED.remove(key);
+		return true;
+	}
+
+	private static String encodeIcon(ItemStack stack) {
+		try {
+			ClientPacketListener connection = Minecraft.getInstance().getConnection();
+			if (connection == null) {
+				return "";
+			}
+			RegistryOps<JsonElement> ops = connection.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+			return ItemStack.CODEC.encodeStart(ops, stack).result().map(JsonElement::toString).orElse("");
+		} catch (Exception e) {
+			return "";
+		}
+	}
+
+	private static ItemStack decodeIcon(String data) {
+		try {
+			ClientPacketListener connection = Minecraft.getInstance().getConnection();
+			if (connection == null) {
+				return null;
+			}
+			RegistryOps<JsonElement> ops = connection.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+			return ItemStack.CODEC.parse(ops, JsonParser.parseString(data)).result()
+					.filter(stack -> !stack.isEmpty()).orElse(null);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	public static ItemStack iconFor(Skill s) {

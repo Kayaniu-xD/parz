@@ -27,6 +27,12 @@ public final class ParzConfigDefinition {
 			"Removes the visual blindness effect (black fog). The effect itself stays, so you still cannot sprint.",
 			false);
 
+	public static final Toggle MENU_BUTTON = GENERAL.toggle(
+			"general.menu_button",
+			"SkyBlock Menu Button",
+			"Replaces the top left glass pane of the /skyblockmenu with a button that opens the Parz menu.",
+			true);
+
 	// ---- Dashboard & HUD ---------------------------------------------------------
 	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/parz-dash) and HUD trackers (/parz hud).");
 
@@ -40,6 +46,18 @@ public final class ParzConfigDefinition {
 			"dashboard.hud_trackers",
 			"HUD Trackers",
 			"Shows the skills and collections you pinned in /parz-dash on your screen. Move them with /parz hud.",
+			true);
+
+	public static final Toggle LIVE_COLLECTIONS = DASHBOARD.toggle(
+			"dashboard.live_collections",
+			"Live Collections",
+			"Raises your collections while you play: items you pick up and items that go into your sacks (read from the [Sacks] chat message). Enchanted items count as what they are made of.",
+			true);
+
+	public static final Toggle SUBTRACT_COLLECTIONS = DASHBOARD.toggle(
+			"dashboard.subtract_collections",
+			"Subtract Lost Items",
+			"Lowers a collection again when items disappear from your inventory or sacks. Items sold to the Bazaar or an NPC and items used in menus are not subtracted.",
 			true);
 
 	private ParzConfigDefinition() {

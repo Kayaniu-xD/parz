@@ -335,6 +335,10 @@ public class DashboardScreen extends Screen {
 		long scanned = list.stream().filter(c -> !"UNKNOWN".equals(c.status)).count();
 		long maxedCount = list.stream().filter(c -> "MAXED".equals(c.status)).count();
 		String header = category + ": " + maxedCount + "/" + list.size() + " maxed, " + scanned + " scanned";
+		if (DashboardData.DUNGEON_CATEGORY.equals(category)) {
+			header = "Dungeons: " + HudTrackers.shortNumber(list.stream().mapToDouble(c -> c.total).sum())
+					+ " floor completions (Master Mode counts twice)";
+		}
 		String fromMenu = DashboardData.get().categorySummary.get(category);
 		if (fromMenu != null) {
 			header += "   |   /collections: " + fromMenu;
@@ -390,6 +394,11 @@ public class DashboardScreen extends Screen {
 				line2 = "Collection maxed!";
 			}
 			case "PROGRESS" -> {
+				if (DashboardData.DUNGEON_CATEGORY.equals(c.category)) {
+					line1 = "Completions: " + HudTrackers.shortNumber(c.total);
+					line2 = "Normal +1  -  Master +2";
+					break;
+				}
 				line1 = c.needed > 0
 						? "Next: " + HudTrackers.shortNumber(c.current) + " / " + HudTrackers.shortNumber(c.needed)
 						: "Total: " + HudTrackers.shortNumber(c.total);

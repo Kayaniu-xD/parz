@@ -3,7 +3,8 @@
 	"package": "net.parz.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"BlindnessFogMixin"
+		"BlindnessFogMixin",
+		"SkyBlockMenuMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -3,15 +3,20 @@ package net.parz;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.gui.screens.Screen;
 import net.parz.config.ParzConfig;
+import net.parz.dashboard.CollectionTracker;
 import net.parz.dashboard.DashboardData;
 import net.parz.dashboard.DashboardTracker;
 import net.parz.gui.DashboardScreen;
 import net.parz.gui.HudEditorScreen;
 import net.parz.hud.HudTrackers;
 import net.parz.gui.ParzConfigScreen;
+import net.minecraft.client.Minecraft;
+import net.parz.update.ModUpdater;
 import net.parz.skyblock.HypixelResources;
 import net.parz.skyblock.SkyBlockDetector;
 import org.slf4j.Logger;
@@ -34,8 +39,13 @@ public class ParzClient implements ClientModInitializer {
 		ParzConfig.load();
 		HypixelResources.load();
 		DashboardData.load();
+		DashboardData.ensureAccount(Minecraft.getInstance().getUser().getName());
+		// a different Minecraft account than last time: its old skills and collections are removed
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+				DashboardData.ensureAccount(client.getUser().getName()));
 		SkyBlockDetector.register();
 		DashboardTracker.register();
+		CollectionTracker.register();
 		HudTrackers.register();
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {
@@ -46,6 +56,10 @@ public class ParzClient implements ClientModInitializer {
 					})
 					.then(ClientCommands.literal("hud").executes(context -> {
 						screenToOpen = HudEditorScreen::new;
+						return 1;
+					}))
+					.then(ClientCommands.literal("update").executes(context -> {
+						ModUpdater.run(context.getSource());
 						return 1;
 					})));
 			dispatcher.register(ClientCommands.literal("parz-dash").executes(context -> {
@@ -62,6 +76,22 @@ public class ParzClient implements ClientModInitializer {
 			}
 		});
 
-		LOGGER.info("Parz loaded - use /parz, /parz hud and /parz-dash");
+		// everything (settings, skills, collections, HUD) is written when the game closes
+		// or when you leave a server; the shutdown hook covers the cases the events miss
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> saveAll());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> saveAll());
+		Runtime.getRuntime().addShutdownHook(new Thread(ParzClient::saveAll, "parz-save"));
+
+		LOGGER.info("Parz loaded - use /parz, /parz hud, /parz update and /parz-dash");
+	}
+
+	/** Writes the settings and the dashboard data (skills, collections, goals, HUD) to disk. */
+	public static synchronized void saveAll() {
+		try {
+			ParzConfig.save();
+			DashboardData.save();
+		} catch (Exception e) {
+			LOGGER.error("Could not save Parz data", e);
+		}
 	}
 }
