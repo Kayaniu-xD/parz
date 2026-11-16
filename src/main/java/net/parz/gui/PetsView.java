@@ -100,7 +100,7 @@ public final class PetsView {
 			if (pet.matches()) {
 				// a favourite pet has a star in front: "★ [Lvl 200] Golden Dragon"
 				list.add(new Entry(slot, stack, true, !pet.group(1).isBlank()));
-			} else if (!name.isEmpty() && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("glass_pane")) {
+			} else if (!name.isEmpty() && !name.equalsIgnoreCase("Pets") && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("glass_pane")) {
 				list.add(new Entry(slot, stack, false, false));
 			}
 		}
