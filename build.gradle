@@ -45,11 +45,9 @@ processResources {
 	}
 }
 
-if (mcVariant) {
-	// parz-1.0.12-mc26.3.jar
-	tasks.named('jar') {
-		archiveClassifier = "mc${mcVariant}".toString()
-	}
+// Every jar carries its Minecraft version: parz-1.0.14-mc26.2.jar, parz-1.0.14-mc26.3.jar
+tasks.named('jar') {
+	archiveClassifier = "mc${project.minecraft_version}".toString()
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -135,7 +133,7 @@ if (!mcVariant) {
 		doLast {
 			def libs = layout.buildDirectory.dir('libs').get().asFile
 			def trash = new File(libs, 'Müll')
-			def current = ["${base.archivesName.get()}-${project.version}.jar".toString(),
+			def current = ["${base.archivesName.get()}-${project.version}-mc${project.minecraft_version}.jar".toString(),
 						   "${base.archivesName.get()}-${project.version}-sources.jar".toString()]
 			(libs.listFiles() ?: new File[0]).findAll { it.isFile() && it.name.endsWith('.jar') && !(it.name in current) }.each { old ->
 				trash.mkdirs()
@@ -211,7 +209,8 @@ if (!mcVariant) {
 			def jarFile = tasks.named('jar').get().archiveFile.get().asFile
 			// jars for the other Minecraft versions (parz-<version>-mc26.3.jar) are attached to the same release
 			def extraJars = (file('releases').listFiles() ?: new File[0]).findAll {
-				it.name.startsWith("parz-${version}-mc".toString()) && it.name.endsWith('.jar') && !it.name.contains('sources')
+				it.name.startsWith("parz-${version}-mc".toString()) && it.name.endsWith('.jar') && !it.name.contains('sources') &&
+						it.name != jarFile.name
 			}
 			try {
 				def view = run([ghExe, 'release', 'view', tag])
@@ -241,7 +240,7 @@ if (!mcVariant) {
 						return
 					}
 					def sha = run(['git', 'rev-parse', 'HEAD'])[1]
-					def notes = "Automatic build of Parz ${version}.\n\nparz-${version}.jar = Minecraft 26.2\nparz-${version}-mc<version>.jar = that Minecraft version".toString()
+					def notes = "Automatic build of Parz ${version}.\n\nparz-${version}-mc<version>.jar = the build for that Minecraft version (26.2, 26.3)".toString()
 					def create = run([ghExe, 'release', 'create', tag, jarFile.absolutePath] + extraJars.collect { it.absolutePath } +
 									 ['--target', sha, '--title', "Parz ${version}".toString(), '--notes', notes])
 					if (create[0] != 0) {

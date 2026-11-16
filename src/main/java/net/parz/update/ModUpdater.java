@@ -44,7 +44,7 @@ public final class ModUpdater {
 	private static final String REPO = "Kayaniu-xD/parz";
 	private static final String LATEST_URL = "https://api.github.com/repos/" + REPO + "/releases/latest";
 
-	/** Minecraft version of the jars without "-mc<version>" in their name (older releases and the main build). */
+	/** Minecraft version of jars without "-mc<version>" in their name (only releases up to 1.0.13 have those). */
 	private static final String PLAIN_ASSET_MINECRAFT = "26.2";
 
 	public enum Status {
@@ -257,8 +257,8 @@ public final class ModUpdater {
 		JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 		String tag = root.get("tag_name").getAsString();
 		JsonArray assets = root.has("assets") ? root.getAsJsonArray("assets") : new JsonArray();
-		// A release holds one jar per Minecraft version: parz-1.0.12.jar (the plain name = Minecraft 26.2)
-		// and parz-1.0.12-mc26.3.jar. Pick the one for the Minecraft that is running.
+		// A release holds one jar per Minecraft version: parz-1.0.14-mc26.2.jar, parz-1.0.14-mc26.3.jar.
+		// Pick the one for the Minecraft that is running (old releases have a plain parz-x.jar = 26.2).
 		JsonObject matching = pickAsset(assets, runningMinecraft());
 		if (matching == null) {
 			throw new UpdateException("Release " + tag + " has no jar for Minecraft " + runningMinecraft());
