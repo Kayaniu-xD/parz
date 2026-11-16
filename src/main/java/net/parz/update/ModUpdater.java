@@ -403,25 +403,54 @@ public final class ModUpdater {
 		}
 	}
 
-	/** Windows keeps the running jar locked: a small script waits until Minecraft is gone. */
+	/**
+	 * Windows keeps the running jar locked, so a small helper program waits until Minecraft is gone and then
+	 * swaps the files. It runs with javaw.exe (no console), so no terminal window opens.
+	 */
 	private static void swapWithHelperScript() throws Exception {
-		Path script = Files.createTempFile("parz-update", ".bat");
-		String content = String.join("\r\n",
-				"@echo off",
-				"set tries=0",
-				":wait",
-				"ping -n 3 127.0.0.1 >nul",
-				"del /f /q \"" + pendingOld + "\" >nul 2>&1",
-				"if exist \"" + pendingOld + "\" (",
-				"  set /a tries+=1",
-				"  if %tries% lss 60 goto wait",
-				"  exit /b 1",
-				")",
-				"move /y \"" + pendingNew + "\" \"" + pendingFinal + "\" >nul",
-				"(goto) 2>nul & del \"%~f0\"",
-				"");
-		Files.writeString(script, content, StandardCharsets.UTF_8);
-		new ProcessBuilder("cmd", "/c", "start", "Parz update", "/min", script.toString()).start();
+		Path helper = Files.createTempFile("ParzUpdateHelper", ".java");
+		String source = """
+				import java.nio.file.*;
+
+				public class ParzUpdateHelper {
+					public static void main(String[] args) throws Exception {
+						Path oldJar = Path.of(args[0]);
+						Path newFile = Path.of(args[1]);
+						Path finalJar = Path.of(args[2]);
+						Path self = Path.of(args[3]);
+						try {
+							for (int i = 0; i < 60; i++) {
+								Thread.sleep(2000);
+								try {
+									Files.deleteIfExists(oldJar);
+								} catch (Exception stillLocked) {
+									// Minecraft is still closing
+								}
+								if (!Files.exists(oldJar)) {
+									Files.move(newFile, finalJar, StandardCopyOption.REPLACE_EXISTING);
+									break;
+								}
+							}
+						} finally {
+							try {
+								Files.deleteIfExists(self);
+							} catch (Exception ignored) {
+								// the temp file stays, harmless
+							}
+						}
+					}
+				}
+				""";
+		Files.writeString(helper, source, StandardCharsets.UTF_8);
+
+		Path javaHome = Path.of(System.getProperty("java.home"));
+		Path javaw = javaHome.resolve("bin").resolve("javaw.exe");
+		String executable = Files.exists(javaw) ? javaw.toString() : javaHome.resolve("bin").resolve("java.exe").toString();
+		new ProcessBuilder(executable, helper.toString(), pendingOld.toString(), pendingNew.toString(),
+				pendingFinal.toString(), helper.toString())
+				.redirectErrorStream(true)
+				.redirectOutput(ProcessBuilder.Redirect.DISCARD)
+				.start();
 	}
 
 	// ---- helpers -----------------------------------------------------------------------
