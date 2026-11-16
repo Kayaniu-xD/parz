@@ -1,0 +1,27 @@
+{
+	"schemaVersion": 1,
+	"id": "parz",
+	"version": "${version}",
+	"name": "Parz",
+	"description": "Client-side utility mod with a categorized config menu. Open it with /parz.",
+	"authors": [
+		"Pay2Loze"
+	],
+	"contact": {},
+	"license": "All-Rights-Reserved",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"net.parz.ParzClient"
+		]
+	},
+	"mixins": [
+		"parz.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.0",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

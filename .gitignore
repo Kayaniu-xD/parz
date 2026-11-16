@@ -1,0 +1,21 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+
+# idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# fabric
+run/
+
+# claude code (local settings)
+.claude/settings.local.json
+
+# os
+.DS_Store
+Thumbs.db
