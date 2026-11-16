@@ -18,6 +18,8 @@ public final class ConfigModel {
 		public final List<Category> children = new ArrayList<>();
 		public final List<Toggle> toggles = new ArrayList<>();
 		public boolean expanded = false;
+		/** True for the "Update" category: the page shows the version status and the update buttons. */
+		public boolean updatePage = false;
 
 		public Category(String name, String description, Category parent) {
 			this.name = name;

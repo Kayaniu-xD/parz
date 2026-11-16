@@ -60,7 +60,28 @@ public final class ParzConfigDefinition {
 			"Lowers a collection again when items disappear from your inventory or sacks. Items sold to the Bazaar or an NPC and items used in menus are not subtracted.",
 			true);
 
+	// ---- Update --------------------------------------------------------------------
+	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
+
+	public static final Toggle UPDATE_CHECK = UPDATE.toggle(
+			"update.check_on_start",
+			"Check on Start",
+			"Looks for a new Parz version on GitHub every time the game starts.",
+			true);
+
+	public static final Toggle UPDATE_CHAT = UPDATE.toggle(
+			"update.chat_message",
+			"Chat Message",
+			"Shows a message in the chat (with a click to update) when a new version is available.",
+			true);
+
 	private ParzConfigDefinition() {
+	}
+
+	private static Category updateCategory(String name, String description) {
+		Category category = category(name, description);
+		category.updatePage = true;
+		return category;
 	}
 
 	private static Category category(String name, String description) {

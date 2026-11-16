@@ -11,6 +11,7 @@ import net.parz.config.ConfigModel.Toggle;
 import net.parz.config.ParzConfig;
 import net.parz.config.ParzConfigDefinition;
 import net.parz.skyblock.SkyBlockDetector;
+import net.parz.update.ModUpdater;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -351,6 +352,9 @@ public class ParzConfigScreen extends Screen {
 			int y = startY - (int) contentScroll;
 			graphics.enableScissor(rightX1 - 4, contentY1, rightX2 + 4, contentY2);
 			boolean anything = false;
+			if (selected.updatePage) {
+				y += drawUpdateBlock(graphics, y, mouseX, mouseY, mouseInContent);
+			}
 			for (Toggle toggle : selected.toggles) {
 				if (!toggle.matches(query)) {
 					continue;
@@ -381,6 +385,89 @@ public class ParzConfigScreen extends Screen {
 		footerDivider(graphics, rightX1, rightX2, pgY2 - 17);
 		graphics.text(font, part1, tx, pgY2 - 12, TEXT_DIM, true);
 		graphics.text(font, part2, tx + font.width(part1), pgY2 - 12, TEXT_AUTHOR, true);
+	}
+
+	/** The version status and the buttons of the "Update" category. Returns its height. */
+	private int drawUpdateBlock(GuiGraphicsExtractor graphics, int y, int mouseX, int mouseY, boolean mouseInContent) {
+		int x1 = rightX1;
+		int x2 = rightX2;
+		ModUpdater.Status status = ModUpdater.status();
+		String latest = ModUpdater.latestVersion();
+
+		graphics.text(font, "Installed version:", x1 + 2, y + 8, TEXT_DIM, true);
+		graphics.text(font, ModUpdater.currentVersion(), x1 + 2 + font.width("Installed version:  "), y + 8, TEXT, true);
+
+		String text;
+		int color;
+		switch (status) {
+			case CHECKING -> {
+				text = "Checking GitHub...";
+				color = TEXT_DIM;
+			}
+			case UP_TO_DATE -> {
+				text = "You have the newest version.";
+				color = TOGGLE_ON;
+			}
+			case AVAILABLE -> {
+				text = "New version available: " + latest;
+				color = 0xFFFFB84D;
+			}
+			case DOWNLOADING -> {
+				text = "Downloading " + latest + "...";
+				color = ACCENT;
+			}
+			case READY -> {
+				text = "Version " + latest + " is downloaded. Restart Minecraft to install it.";
+				color = TOGGLE_ON;
+			}
+			case ERROR -> {
+				text = ModUpdater.message();
+				color = TOGGLE_OFF;
+			}
+			default -> {
+				text = "Not checked yet.";
+				color = TEXT_DIM;
+			}
+		}
+		int ty = y + 22;
+		for (String line : wrap(text, (x2 - x1) - 4)) {
+			graphics.text(font, line, x1 + 2, ty, color, true);
+			ty += 10;
+		}
+
+		int by = ty + 6;
+		boolean busy = status == ModUpdater.Status.CHECKING || status == ModUpdater.Status.DOWNLOADING;
+		String checkLabel = "Check for updates";
+		int checkW = font.width(checkLabel) + 16;
+		drawButton(graphics, x1 + 2, by, checkW, checkLabel, !busy, mouseX, mouseY, mouseInContent, ModUpdater::check);
+
+		boolean canUpdate = status == ModUpdater.Status.AVAILABLE;
+		String updateLabel = status == ModUpdater.Status.READY ? "Downloaded"
+				: latest.isEmpty() ? "Update" : "Update to " + latest;
+		int updateW = font.width(updateLabel) + 16;
+		drawButton(graphics, x1 + 2 + checkW + 6, by, updateW, updateLabel, canUpdate, mouseX, mouseY, mouseInContent,
+				() -> ModUpdater.install(ModUpdater::toChat));
+
+		int height = (by + 18 + 10) - y;
+		for (int dx = x1; dx < x2; dx += 3) {
+			graphics.fill(dx, y + height - 1, dx + 1, y + height, 0xFF3C3D45);
+		}
+		return height;
+	}
+
+	private void drawButton(GuiGraphicsExtractor graphics, int x, int y, int w, String label, boolean enabled,
+							int mouseX, int mouseY, boolean mouseInContent, Runnable action) {
+		boolean hovered = enabled && mouseInContent && isInside(mouseX, mouseY, x, y, x + w, y + 16);
+		int bg = !enabled ? 0xFF222328 : hovered ? PLATE_HOVER : PLATE;
+		graphics.fill(x, y, x + w, y + 16, bg);
+		graphics.outline(x, y, w, 16, hovered ? ACCENT : PLATE_BORDER);
+		if (enabled) {
+			graphics.fill(x + 1, y + 1, x + w - 1, y + 2, PLATE_HIGHLIGHT);
+		}
+		graphics.text(font, label, x + (w - font.width(label)) / 2, y + 4, enabled ? TEXT : 0xFF5C5D66, true);
+		if (enabled) {
+			contentHits.add(new Hit(x, y, x + w, y + 16, action));
+		}
 	}
 
 	/** Draws one option (name, switch, description) and returns its height. */

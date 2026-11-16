@@ -8,8 +8,11 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.parz.ParzClient;
+import net.parz.config.ParzConfigDefinition;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -24,6 +27,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.zip.ZipFile;
 
 /**
@@ -39,7 +44,17 @@ public final class ModUpdater {
 	private static final String REPO = "Kayaniu-xD/parz";
 	private static final String LATEST_URL = "https://api.github.com/repos/" + REPO + "/releases/latest";
 
-	private static volatile boolean running = false;
+	public enum Status {
+		IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, READY, ERROR
+	}
+
+	private static volatile Status status = Status.IDLE;
+	private static volatile String message = "";
+	private static volatile Release latest = null;
+	private static final AtomicBoolean busy = new AtomicBoolean(false);
+	private static String announcedVersion = "";
+	private static int ticksInWorld = 0;
+
 	private static Path pendingNew = null;
 	private static Path pendingOld = null;
 	private static Path pendingFinal = null;
@@ -57,54 +72,161 @@ public final class ModUpdater {
 	private ModUpdater() {
 	}
 
-	public static void run(FabricClientCommandSource source) {
-		if (running) {
-			say(source, "An update is already running.");
+	// ---- state for the menu ------------------------------------------------------------
+
+	public static Status status() {
+		return status;
+	}
+
+	/** Version of the newest GitHub release (empty until checked). */
+	public static String latestVersion() {
+		Release release = latest;
+		return release != null ? release.version() : "";
+	}
+
+	/** Error text when the status is ERROR. */
+	public static String message() {
+		return message;
+	}
+
+	public static String currentVersion() {
+		return FabricLoader.getInstance().getModContainer(ParzClient.MOD_ID)
+				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("?");
+	}
+
+	// ---- entry points ------------------------------------------------------------------
+
+	/** Checks for a new version when the game starts (if enabled in /parz > Update). */
+	public static void checkOnStartup() {
+		if (ParzConfigDefinition.UPDATE_CHECK.isEnabled()) {
+			check();
+		}
+	}
+
+	/** Looks for a new version in the background (no download). */
+	public static void check() {
+		if (!busy.compareAndSet(false, true)) {
 			return;
 		}
-		running = true;
-		say(source, "Checking GitHub for a new Parz version...");
 		CompletableFuture.runAsync(() -> {
 			try {
-				update(source);
-			} catch (UpdateException e) {
-				say(source, "Update failed: " + e.getMessage());
-			} catch (Exception e) {
-				ParzClient.LOGGER.warn("Update failed", e);
-				say(source, "Update failed: " + e.getClass().getSimpleName() + " " + e.getMessage());
+				doCheck();
 			} finally {
-				running = false;
+				busy.set(false);
 			}
 		});
 	}
 
-	private static void update(FabricClientCommandSource source) throws Exception {
-		ModContainer container = FabricLoader.getInstance().getModContainer(ParzClient.MOD_ID)
-				.orElseThrow(() -> new UpdateException("Parz is not loaded"));
-		String current = container.getMetadata().getVersion().getFriendlyString();
-		List<Path> paths = container.getOrigin().getPaths();
-		if (paths.size() != 1 || !Files.isRegularFile(paths.getFirst()) || !paths.getFirst().toString().endsWith(".jar")) {
-			throw new UpdateException("Parz does not run from a jar (development environment)");
-		}
-		Path oldJar = paths.getFirst();
-
-		Release release = latestRelease();
-		if (compareVersions(release.version(), current) <= 0) {
-			say(source, "Parz is up to date (version " + current + ").");
+	/** Downloads the newest version (checks first if needed). Feedback goes to the given chat consumer. */
+	public static void install(Consumer<Component> chat) {
+		if (!busy.compareAndSet(false, true)) {
+			tell(chat, "An update check or download is already running.");
 			return;
 		}
-		say(source, "Downloading Parz " + release.version() + " (you have " + current + ")...");
+		CompletableFuture.runAsync(() -> {
+			try {
+				if (status != Status.AVAILABLE || latest == null) {
+					tell(chat, "Checking GitHub for a new Parz version...");
+					doCheck();
+				}
+				if (status == Status.UP_TO_DATE) {
+					tell(chat, "Parz is up to date (version " + currentVersion() + ").");
+				} else if (status == Status.ERROR) {
+					tell(chat, "Update failed: " + message);
+				} else if (status == Status.AVAILABLE) {
+					doInstall(latest, chat);
+				}
+			} finally {
+				busy.set(false);
+			}
+		});
+	}
 
-		Path modsDir = oldJar.getParent();
-		Path partFile = modsDir.resolve(release.assetName() + ".part");
-		Path newFile = modsDir.resolve(release.assetName() + ".new");
-		Path finalJar = modsDir.resolve(release.assetName());
-		download(release, partFile);
-		verifyJar(partFile);
-		Files.move(partFile, newFile, StandardCopyOption.REPLACE_EXISTING);
+	/** /parz update */
+	public static void run(FabricClientCommandSource source) {
+		install(component -> source.sendFeedback(component));
+	}
 
-		scheduleSwap(newFile, oldJar, finalJar);
-		say(source, "Parz " + release.version() + " is downloaded. It replaces the old mod when you close Minecraft - restart the game to use it.");
+	/** Chat output for actions started from the menu. */
+	public static void toChat(Component component) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.player != null) {
+			client.player.sendSystemMessage(component);
+		}
+	}
+
+	/** Shows "new version available" in the chat a few seconds after you joined a world. */
+	public static void tick(Minecraft client) {
+		if (client.player == null) {
+			ticksInWorld = 0;
+			return;
+		}
+		ticksInWorld++;
+		Release release = latest;
+		if (ticksInWorld < 100 || status != Status.AVAILABLE || release == null
+				|| release.version().equals(announcedVersion) || !ParzConfigDefinition.UPDATE_CHAT.isEnabled()) {
+			return;
+		}
+		announcedVersion = release.version();
+		Component text = Component.literal("[Parz] New version " + release.version() + " is available (you have "
+						+ currentVersion() + "). ")
+				.append(Component.literal("[Click to update]").withStyle(style -> style
+						.withColor(ChatFormatting.GREEN)
+						.withClickEvent(new ClickEvent.RunCommand("parz update"))));
+		client.player.sendSystemMessage(text);
+	}
+
+	// ---- check / install ---------------------------------------------------------------
+
+	private static void doCheck() {
+		status = Status.CHECKING;
+		try {
+			Release release = latestRelease();
+			latest = release;
+			status = compareVersions(release.version(), currentVersion()) > 0 ? Status.AVAILABLE : Status.UP_TO_DATE;
+		} catch (UpdateException e) {
+			message = e.getMessage();
+			status = Status.ERROR;
+		} catch (Exception e) {
+			ParzClient.LOGGER.warn("Update check failed", e);
+			message = "Could not reach GitHub";
+			status = Status.ERROR;
+		}
+	}
+
+	private static void doInstall(Release release, Consumer<Component> chat) {
+		status = Status.DOWNLOADING;
+		try {
+			ModContainer container = FabricLoader.getInstance().getModContainer(ParzClient.MOD_ID)
+					.orElseThrow(() -> new UpdateException("Parz is not loaded"));
+			List<Path> paths = container.getOrigin().getPaths();
+			if (paths.size() != 1 || !Files.isRegularFile(paths.getFirst()) || !paths.getFirst().toString().endsWith(".jar")) {
+				throw new UpdateException("Parz does not run from a jar (development environment)");
+			}
+			Path oldJar = paths.getFirst();
+			tell(chat, "Downloading Parz " + release.version() + " (you have " + currentVersion() + ")...");
+
+			Path modsDir = oldJar.getParent();
+			Path partFile = modsDir.resolve(release.assetName() + ".part");
+			Path newFile = modsDir.resolve(release.assetName() + ".new");
+			Path finalJar = modsDir.resolve(release.assetName());
+			download(release, partFile);
+			verifyJar(partFile);
+			Files.move(partFile, newFile, StandardCopyOption.REPLACE_EXISTING);
+
+			scheduleSwap(newFile, oldJar, finalJar);
+			status = Status.READY;
+			tell(chat, "Parz " + release.version() + " is downloaded. It replaces the old mod when you close Minecraft - restart the game to use it.");
+		} catch (UpdateException e) {
+			message = e.getMessage();
+			status = Status.ERROR;
+			tell(chat, "Update failed: " + e.getMessage());
+		} catch (Exception e) {
+			ParzClient.LOGGER.warn("Update failed", e);
+			message = e.getClass().getSimpleName() + " " + e.getMessage();
+			status = Status.ERROR;
+			tell(chat, "Update failed: " + message);
+		}
 	}
 
 	// ---- GitHub ------------------------------------------------------------------------
@@ -291,7 +413,7 @@ public final class ModUpdater {
 		}
 	}
 
-	private static void say(FabricClientCommandSource source, String message) {
-		Minecraft.getInstance().execute(() -> source.sendFeedback(Component.literal("[Parz] " + message)));
+	private static void tell(Consumer<Component> chat, String text) {
+		Minecraft.getInstance().execute(() -> chat.accept(Component.literal("[Parz] " + text)));
 	}
 }

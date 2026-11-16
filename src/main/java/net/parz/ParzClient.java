@@ -47,6 +47,7 @@ public class ParzClient implements ClientModInitializer {
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
+		ModUpdater.checkOnStartup();
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {
 			dispatcher.register(ClientCommands.literal("parz")
@@ -69,6 +70,7 @@ public class ParzClient implements ClientModInitializer {
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			ModUpdater.tick(client);
 			if (screenToOpen != null) {
 				Screen screen = screenToOpen.get();
 				screenToOpen = null;
