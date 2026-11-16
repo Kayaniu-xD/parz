@@ -259,7 +259,16 @@ public final class ModUpdater {
 		JsonArray assets = root.has("assets") ? root.getAsJsonArray("assets") : new JsonArray();
 		// A release holds one jar per Minecraft version: parz-1.0.12.jar (the plain name = Minecraft 26.2)
 		// and parz-1.0.12-mc26.3.jar. Pick the one for the Minecraft that is running.
-		String minecraft = runningMinecraft();
+		JsonObject matching = pickAsset(assets, runningMinecraft());
+		if (matching == null) {
+			throw new UpdateException("Release " + tag + " has no jar for Minecraft " + runningMinecraft());
+		}
+		return new Release(tag, tag.startsWith("v") ? tag.substring(1) : tag, matching.get("name").getAsString(),
+				matching.get("browser_download_url").getAsString());
+	}
+
+	/** The jar of a release for this Minecraft version, or null. */
+	static JsonObject pickAsset(JsonArray assets, String minecraft) {
 		JsonObject plain = null;
 		JsonObject matching = null;
 		for (JsonElement element : assets) {
@@ -277,11 +286,7 @@ public final class ModUpdater {
 		if (matching == null && plain != null && minecraft.equals(PLAIN_ASSET_MINECRAFT)) {
 			matching = plain;
 		}
-		if (matching == null) {
-			throw new UpdateException("Release " + tag + " has no jar for Minecraft " + minecraft);
-		}
-		return new Release(tag, tag.startsWith("v") ? tag.substring(1) : tag, matching.get("name").getAsString(),
-				matching.get("browser_download_url").getAsString());
+		return matching;
 	}
 
 	/** The Minecraft version that is running, e.g. "26.2". */
