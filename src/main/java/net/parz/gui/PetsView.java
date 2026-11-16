@@ -116,7 +116,16 @@ public final class PetsView {
 		if (name.contains("next page")) {
 			return 1;
 		}
-		return 2;
+		if (name.equals("search") || name.equals("sort") || name.contains("visibility")) {
+			return 3; // tools
+		}
+		if (name.equals("go back")) {
+			return 4;
+		}
+		if (name.equals("close")) {
+			return 5;
+		}
+		return 2; // features (Exp Sharing, Autopet, ...) keep the menu order
 	}
 
 	private static String loreText(ItemStack stack) {
@@ -261,28 +270,18 @@ public final class PetsView {
 			mainButtons.add(new String[]{"Convert to item", "1"});
 		}
 
-		List<Integer> controlWidths = new ArrayList<>();
+		// the other buttons form a grid of equal cells: 3 columns, or 2 if a label does not fit into a cell
 		List<String> controlLabels = new ArrayList<>();
+		int widest = 0;
 		for (Entry control : controls) {
 			String label = clean(control.stack().getHoverName().getString()).trim();
-			if (label.length() > 22) {
-				label = label.substring(0, 21) + "...";
-			}
 			controlLabels.add(label);
-			controlWidths.add(font.width(label) + 12);
+			widest = Math.max(widest, font.width(label));
 		}
-		int rows = 0;
-		int cx = x1;
-		for (int w : controlWidths) {
-			if (cx > x1 && cx + w > x2) {
-				rows++;
-				cx = x1;
-			}
-			cx += w + 4;
-		}
-		if (!controls.isEmpty()) {
-			rows++;
-		}
+		int gap = 4;
+		int cols = (x2 - x1 - 2 * gap) / 3 >= widest + 10 ? 3 : 2;
+		int cellW = (x2 - x1 - (cols - 1) * gap) / cols;
+		int rows = (controls.size() + cols - 1) / cols;
 		int controlsH = rows * 17;
 		int bottomY = frame.pgY2() - 8;
 		int controlsTop = bottomY - controlsH;
@@ -325,21 +324,19 @@ public final class PetsView {
 		}
 
 		// ---- the other buttons of the menu (next page, close, ...) ----
-		int ry = controlsTop;
-		cx = x1;
 		for (int i = 0; i < controls.size(); i++) {
-			int w = controlWidths.get(i);
-			if (cx > x1 && cx + w > x2) {
-				ry += 17;
-				cx = x1;
-			}
+			int cx = x1 + (i % cols) * (cellW + gap);
+			int ry = controlsTop + (i / cols) * 17;
 			Entry control = controls.get(i);
-			boolean hovered = drawButton(graphics, font, cx, ry, w, 14, controlLabels.get(i), mouseX, mouseY,
+			String label = controlLabels.get(i);
+			if (font.width(label) > cellW - 6) {
+				label = font.plainSubstrByWidth(label, cellW - 6 - font.width("...")) + "...";
+			}
+			boolean hovered = drawButton(graphics, font, cx, ry, cellW, 14, label, mouseX, mouseY,
 					() -> click(container, control.slot(), 0));
 			if (hovered) {
 				graphics.setTooltipForNextFrame(font, control.stack(), mouseX, mouseY);
 			}
-			cx += w + 4;
 		}
 	}
 
