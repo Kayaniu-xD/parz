@@ -104,6 +104,18 @@ public final class PetsView {
 		return list;
 	}
 
+	/** Sort key of a control button: 0 = Previous Page, 1 = Next Page, 2 = all others (stable sort keeps their order). */
+	private static int controlOrder(Entry entry) {
+		String name = clean(entry.stack().getHoverName().getString()).toLowerCase(Locale.ROOT);
+		if (name.contains("previous page")) {
+			return 0;
+		}
+		if (name.contains("next page")) {
+			return 1;
+		}
+		return 2;
+	}
+
 	private static String loreText(ItemStack stack) {
 		StringBuilder sb = new StringBuilder();
 		ItemLore lore = stack.get(DataComponents.LORE);
@@ -135,6 +147,8 @@ public final class PetsView {
 		for (Entry entry : entries(container)) {
 			(entry.pet() ? pets : controls).add(entry);
 		}
+		// Previous Page and Next Page first and next to each other, everything else keeps the menu order
+		controls.sort(java.util.Comparator.comparingInt(PetsView::controlOrder));
 
 		// new menu page: forget the selection
 		int containerId = container.getMenu().containerId;
