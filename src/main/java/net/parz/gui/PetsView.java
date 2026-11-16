@@ -128,6 +128,42 @@ public final class PetsView {
 		return 2; // features (Exp Sharing, Autopet, ...) keep the menu order
 	}
 
+	private static final Pattern LEVEL = Pattern.compile("\\[Lvl \\d+]\\s*");
+
+	/**
+	 * Splits a pet name like "star [Lvl 200] Golden Dragon" into {level, rest}, keeping the colors. Everything in
+	 * front of the level (the favourite star) is dropped. Names without a level come back as {"", name}.
+	 */
+	private static Component[] splitName(Component name) {
+		String full = name.getString();
+		Matcher match = LEVEL.matcher(full);
+		if (!match.find()) {
+			return new Component[]{Component.empty(), name};
+		}
+		int levelStart = match.start();
+		int levelEnd = match.end();
+		int levelTextEnd = full.indexOf(']', levelStart) + 1;
+		net.minecraft.network.chat.MutableComponent level = Component.empty();
+		net.minecraft.network.chat.MutableComponent rest = Component.empty();
+		int[] pos = {0};
+		name.visit((style, text) -> {
+			int from = pos[0];
+			int to = from + text.length();
+			pos[0] = to;
+			int a = Math.max(from, levelStart);
+			int b = Math.min(to, levelTextEnd);
+			if (a < b) {
+				level.append(Component.literal(text.substring(a - from, b - from)).setStyle(style));
+			}
+			int c = Math.max(from, levelEnd);
+			if (c < to) {
+				rest.append(Component.literal(text.substring(c - from)).setStyle(style));
+			}
+			return java.util.Optional.empty();
+		}, net.minecraft.network.chat.Style.EMPTY);
+		return new Component[]{level, rest};
+	}
+
 	private static String loreText(ItemStack stack) {
 		StringBuilder sb = new StringBuilder();
 		ItemLore lore = stack.get(DataComponents.LORE);
@@ -212,6 +248,16 @@ public final class PetsView {
 		graphics.enableScissor(x1 - 1, top, x2 + 1, bottom);
 		int y = top + 1 - (int) listScroll;
 		boolean mouseInList = mouseX >= x1 && mouseX < x2 && mouseY >= top && mouseY < bottom;
+		// columns: icon | level | name | favourite star | active gem
+		int levelW = 0;
+		for (Entry pet : pets) {
+			levelW = Math.max(levelW, font.width(splitName(pet.stack().getHoverName())[0]));
+		}
+		int levelX = x1 + 23;
+		int nameX = levelX + levelW + 6;
+		int gemX = x2 - 6 - 8;
+		int starW = font.width("★");
+		int starX = gemX - 4 - starW;
 		for (Entry pet : pets) {
 			boolean isSelected = pet == selected;
 			boolean hovered = mouseInList && mouseY >= y && mouseY < y + ROW_H && mouseX >= x1 && mouseX < x2 - 6;
@@ -219,10 +265,15 @@ public final class PetsView {
 			graphics.item(pet.stack(), x1 + 3, y + 1);
 
 			boolean active = isActive(pet.stack());
-			int nameMax = (x2 - 6 - x1) - 26 - (active ? 12 : 0);
-			List<FormattedCharSequence> lines = font.split(pet.stack().getHoverName(), Math.max(10, nameMax));
+			int textY = y + (ROW_H - font.lineHeight) / 2 + 1;
+			Component[] parts = splitName(pet.stack().getHoverName());
+			graphics.text(font, parts[0], levelX, textY, BookStyle.TEXT, true);
+			List<FormattedCharSequence> lines = font.split(parts[1], Math.max(10, starX - 4 - nameX));
 			if (!lines.isEmpty()) {
-				graphics.text(font, lines.getFirst(), x1 + 23, y + (ROW_H - font.lineHeight) / 2 + 1, BookStyle.TEXT, true);
+				graphics.text(font, lines.getFirst(), nameX, textY, BookStyle.TEXT, true);
+			}
+			if (pet.favorite()) {
+				graphics.text(font, "★", starX, textY, 0xFFFFFF55, true);
 			}
 			if (active) {
 				BookStyle.gem(graphics, x2 - 6 - 8, y + ROW_H / 2, BookStyle.GREEN);
