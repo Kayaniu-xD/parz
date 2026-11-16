@@ -33,6 +33,12 @@ public final class ParzConfigDefinition {
 			"Replaces the top left glass pane of the /skyblockmenu with a button that opens the Parz menu.",
 			true);
 
+	public static final Toggle PETS_MENU = GENERAL.toggle(
+			"general.pets_menu",
+			"Custom Pets Menu",
+			"Shows the /pets menu in the Parz book design: pet list on the left, details and buttons on the right.",
+			true);
+
 	// ---- Dashboard & HUD ---------------------------------------------------------
 	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/parz-dash) and HUD trackers (/parz hud).");
 

@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"BlindnessFogMixin",
-		"SkyBlockMenuMixin"
+		"SkyBlockMenuMixin",
+		"PetsMenuMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

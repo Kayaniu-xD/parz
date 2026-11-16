@@ -199,65 +199,12 @@ public class ParzConfigScreen extends Screen {
 
 	/** Cover, pages, spine shadow, page stack and corner ornaments. */
 	private void drawBook(GuiGraphicsExtractor graphics) {
-		// cover
-		graphics.fill(px, py, px + pw, py + ph, COVER);
-		graphics.outline(px, py, pw, ph, COVER_EDGE);
-		graphics.outline(px + 2, py + 2, pw - 4, ph - 4, COVER_TRIM);
-		// cover corners
-		int[][] corners = {{px, py}, {px + pw - 4, py}, {px, py + ph - 4}, {px + pw - 4, py + ph - 4}};
-		for (int[] c : corners) {
-			graphics.fill(c[0], c[1], c[0] + 4, c[1] + 4, COVER_EDGE);
-			graphics.fill(c[0] + 1, c[1] + 1, c[0] + 3, c[1] + 3, COVER);
-		}
-
-		// page stack (layered paper edges below the pages)
-		for (int i = 0; i < 5; i++) {
-			int color = i % 2 == 0 ? PAGE_STACK_A : PAGE_STACK_B;
-			graphics.fill(pgX1 + i, pgY2 + i, mid - 2, pgY2 + i + 1, color);
-			graphics.fill(mid + 2, pgY2 + i, pgX2 - i, pgY2 + i + 1, color);
-		}
-
-		// pages: lighter at the outer edge, darker towards the spine
-		gradientH(graphics, pgX1, pgY1, mid - 2, pgY2, PAGE_OUTER, PAGE_INNER);
-		gradientH(graphics, mid + 2, pgY1, pgX2, pgY2, PAGE_INNER, PAGE_OUTER);
-		graphics.outline(pgX1, pgY1, mid - 2 - pgX1, pgY2 - pgY1, PAGE_EDGE);
-		graphics.outline(mid + 2, pgY1, pgX2 - (mid + 2), pgY2 - pgY1, PAGE_EDGE);
-
-		// spine shadow
-		graphics.fill(mid - 2, pgY1, mid + 2, pgY2 + 5, 0xFF050506);
-		for (int i = 0; i < 16; i++) {
-			int alpha = (int) (0xA0 * (1f - i / 16f));
-			int color = alpha << 24;
-			graphics.fill(mid - 3 - i, pgY1 + 1, mid - 2 - i, pgY2 - 1, color);
-			graphics.fill(mid + 2 + i, pgY1 + 1, mid + 3 + i, pgY2 - 1, color);
-		}
-
-		// small corner ornaments on all four page corners
-		ornament(graphics, pgX1 + 4, pgY1 + 4, 1, 1);
-		ornament(graphics, pgX2 - 5, pgY1 + 4, -1, 1);
-		ornament(graphics, pgX1 + 4, pgY2 - 5, 1, -1);
-		ornament(graphics, pgX2 - 5, pgY2 - 5, -1, -1);
-		ornament(graphics, mid - 8, pgY1 + 4, -1, 1);
-		ornament(graphics, mid + 7, pgY1 + 4, 1, 1);
-		ornament(graphics, mid - 8, pgY2 - 5, -1, -1);
-		ornament(graphics, mid + 7, pgY2 - 5, 1, -1);
+		BookStyle.drawBook(graphics, new BookStyle.Frame(px, py, pw, ph, pgX1, pgY1, pgX2, pgY2, mid));
 	}
 
-	private void ornament(GuiGraphicsExtractor graphics, int x, int y, int dx, int dy) {
-		int len = 5;
-		graphics.fill(Math.min(x, x + dx * len), y, Math.max(x, x + dx * len) + 1, y + 1, ORNAMENT);
-		graphics.fill(x, Math.min(y, y + dy * len), x + 1, Math.max(y, y + dy * len) + 1, ORNAMENT);
-	}
 
 	private void drawRibbon(GuiGraphicsExtractor graphics) {
-		int x1 = mid - 4, x2 = mid + 4;
-		int top = pgY2 - 6;
-		int bottom = py + ph + 7;
-		graphics.fill(x1, top, x2, bottom, RIBBON);
-		graphics.fill(x1, top, x1 + 1, bottom, RIBBON_DARK);
-		graphics.fill(x2 - 1, top, x2, bottom, RIBBON_DARK);
-		// swallow-tail notch
-		graphics.fill(mid - 1, bottom - 3, mid + 1, bottom, 0xFF0B0B0E);
+		BookStyle.drawRibbon(graphics, new BookStyle.Frame(px, py, pw, ph, pgX1, pgY1, pgX2, pgY2, mid));
 	}
 
 	// ---- left page --------------------------------------------------------------------
@@ -591,33 +538,16 @@ public class ParzConfigScreen extends Screen {
 	// ---- drawing helpers --------------------------------------------------------------
 
 	private void pageTitle(GuiGraphicsExtractor graphics, String title, int x1, int x2, int y) {
-		graphics.text(font, title, (x1 + x2 - font.width(title)) / 2, y, TEXT_TITLE, true);
-		int ly = y + 13;
-		int cx = (x1 + x2) / 2;
-		// fading divider line with a small diamond in the middle
-		for (int x = x1; x < x2; x++) {
-			float distance = Math.abs(x - cx) / (float) ((x2 - x1) / 2);
-			int alpha = (int) (0xFF * (1f - distance * 0.85f));
-			graphics.fill(x, ly, x + 1, ly + 1, (alpha << 24) | (DIVIDER & 0xFFFFFF));
-		}
-		graphics.fill(cx - 1, ly - 2, cx + 2, ly + 3, 0xFF1B1C20);
-		gem(graphics, cx, ly, ACCENT);
+		BookStyle.pageTitle(graphics, font, title, x1, x2, y);
 	}
 
 	private void footerDivider(GuiGraphicsExtractor graphics, int x1, int x2, int y) {
-		int cx = (x1 + x2) / 2;
-		for (int x = x1; x < x2; x++) {
-			float distance = Math.abs(x - cx) / (float) ((x2 - x1) / 2);
-			int alpha = (int) (0xB0 * (1f - distance));
-			graphics.fill(x, y, x + 1, y + 1, (alpha << 24) | (DIVIDER & 0xFFFFFF));
-		}
+		BookStyle.footerDivider(graphics, x1, x2, y);
 	}
 
 	/** A small diamond, 5px wide, centered on (cx, cy). */
 	private void gem(GuiGraphicsExtractor graphics, int cx, int cy, int color) {
-		graphics.fill(cx - 1, cy - 2, cx + 2, cy + 3, color);
-		graphics.fill(cx - 2, cy - 1, cx + 3, cy + 2, color);
-		graphics.fill(cx, cy - 1, cx + 1, cy, 0x66FFFFFF);
+		BookStyle.gem(graphics, cx, cy, color);
 	}
 
 	private void drawIcon(GuiGraphicsExtractor graphics, String[] rows, int x, int y, int scale, int color) {
@@ -631,26 +561,9 @@ public class ParzConfigScreen extends Screen {
 		}
 	}
 
-	private void gradientH(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, int from, int to) {
-		int width = x2 - x1;
-		if (width <= 0) {
-			return;
-		}
-		for (int x = 0; x < width; x += 2) {
-			float t = x / (float) width;
-			graphics.fill(x1 + x, y1, Math.min(x1 + x + 2, x2), y2, lerpColor(from, to, t));
-		}
-	}
 
 	private void drawScrollbar(GuiGraphicsExtractor graphics, int x, int top, int bottom, int viewHeight, double scroll, int maxScroll) {
-		if (maxScroll <= 0) {
-			return;
-		}
-		int trackHeight = bottom - top;
-		int thumbHeight = Math.max(12, trackHeight * viewHeight / (viewHeight + maxScroll));
-		int thumbY = top + (int) ((trackHeight - thumbHeight) * (scroll / maxScroll));
-		graphics.fill(x, top, x + 2, bottom, 0xFF141518);
-		graphics.fill(x, thumbY, x + 2, thumbY + thumbHeight, 0xFF7C7D88);
+		BookStyle.drawScrollbar(graphics, x, top, bottom, viewHeight, scroll, maxScroll);
 	}
 
 	// ======================================================================================
@@ -774,10 +687,6 @@ public class ParzConfigScreen extends Screen {
 	}
 
 	private static int lerpColor(int from, int to, float t) {
-		int a = (int) (((from >>> 24) & 0xFF) + (((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * t);
-		int r = (int) (((from >> 16) & 0xFF) + (((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * t);
-		int g = (int) (((from >> 8) & 0xFF) + (((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * t);
-		int b = (int) ((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * t);
-		return (a << 24) | (r << 16) | (g << 8) | b;
+		return BookStyle.lerpColor(from, to, t);
 	}
 }
