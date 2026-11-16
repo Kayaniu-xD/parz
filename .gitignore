@@ -5,9 +5,14 @@ out/
 classes/
 bin/
 
-# jars are build output (only the gradle wrapper jar is needed)
+# jars are build output
 *.jar
-!gradle/wrapper/gradle-wrapper.jar
+
+# gradle wrapper (kept locally, not part of the repo)
+gradlew
+gradlew.bat
+gradle/
+.gitattributes
 
 # ide / editor
 .idea/
