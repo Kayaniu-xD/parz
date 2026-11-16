@@ -100,33 +100,14 @@ public final class PetsView {
 			if (pet.matches()) {
 				// a favourite pet has a star in front: "★ [Lvl 200] Golden Dragon"
 				list.add(new Entry(slot, stack, true, !pet.group(1).isBlank()));
-			} else if (!name.isEmpty() && !name.equalsIgnoreCase("Pets") && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("glass_pane")) {
+			} else if (!name.isEmpty() && !BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().endsWith("glass_pane")) {
 				list.add(new Entry(slot, stack, false, false));
 			}
 		}
 		return list;
 	}
 
-	/** Sort key of a control button: 0 = Previous Page, 1 = Next Page, 2 = all others (stable sort keeps their order). */
-	private static int controlOrder(Entry entry) {
-		String name = clean(entry.stack().getHoverName().getString()).toLowerCase(Locale.ROOT);
-		if (name.contains("previous page")) {
-			return 0;
-		}
-		if (name.contains("next page")) {
-			return 1;
-		}
-		if (name.equals("search") || name.equals("sort") || name.contains("visibility")) {
-			return 3; // tools
-		}
-		if (name.equals("go back")) {
-			return 4;
-		}
-		if (name.equals("close")) {
-			return 5;
-		}
-		return 2; // features (Exp Sharing, Autopet, ...) keep the menu order
-	}
+	private record Btn(String label, Runnable action, ItemStack tip) {}
 
 	private static final Pattern LEVEL = Pattern.compile("\\[Lvl \\d+]\\s*");
 
@@ -197,8 +178,6 @@ public final class PetsView {
 		}
 		// favourite pets (with a star) are at the top of the pet list, the other pets keep the menu order
 		pets.sort(java.util.Comparator.comparing((Entry entry) -> !entry.favorite()));
-		// Previous Page and Next Page first and next to each other, everything else keeps the menu order
-		controls.sort(java.util.Comparator.comparingInt(PetsView::controlOrder));
 
 		// new menu page: forget the selection
 		int containerId = container.getMenu().containerId;
@@ -313,30 +292,63 @@ public final class PetsView {
 		}
 		BookStyle.pageTitle(graphics, font, selected.stack().getHoverName(), x1, x2, frame.pgY1() + 10);
 
-		// ---- bottom: buttons (computed first, the details use the space above) ----
+// ---- bottom: buttons in three groups (computed first, the details use the space above) ----
 		String lore = loreText(selected.stack());
-		List<String[]> mainButtons = new ArrayList<>(); // label, mouse button
-		mainButtons.add(new String[]{lore.contains("click to despawn") ? "Despawn" : lore.contains("click to summon") ? "Summon" : "Select", "0"});
+		List<List<Btn>> groups = new ArrayList<>();
+		List<Btn> actions = new ArrayList<>();   // despawn / convert / exp sharing
+		List<Btn> navigation = new ArrayList<>(); // pages, go back, close, search, sort
+		List<Btn> features = new ArrayList<>();   // pets, pet slots, autopet, score rewards, visibility
+		actions.add(new Btn(lore.contains("click to despawn") ? "Despawn" : lore.contains("click to summon") ? "Summon" : "Select",
+				() -> click(container, selected.slot(), 0), null));
 		if (lore.contains("convert")) {
-			mainButtons.add(new String[]{"Convert to item", "1"});
+			actions.add(new Btn("Convert to item", () -> click(container, selected.slot(), 1), null));
 		}
-
-		// the other buttons form a grid of equal cells: 3 columns, or 2 if a label does not fit into a cell
-		List<String> controlLabels = new ArrayList<>();
-		int widest = 0;
+		List<String> navOrder = List.of("previous page", "next page", "go back", "close", "search", "sort");
+		List<Btn> navSorted = new ArrayList<>();
+		for (int i = 0; i < navOrder.size(); i++) {
+			navSorted.add(null);
+		}
 		for (Entry control : controls) {
 			String label = clean(control.stack().getHoverName().getString()).trim();
-			controlLabels.add(label);
-			widest = Math.max(widest, font.width(label));
+			String key = label.toLowerCase(Locale.ROOT);
+			Btn btn = new Btn(label, () -> click(container, control.slot(), 0), control.stack());
+			int nav = navOrder.indexOf(key);
+			if (key.equals("exp sharing")) {
+				actions.add(btn);
+			} else if (nav >= 0) {
+				navSorted.set(nav, btn);
+			} else {
+				features.add(btn);
+			}
+		}
+		for (Btn btn : navSorted) {
+			if (btn != null) {
+				navigation.add(btn);
+			}
+		}
+		groups.add(actions);
+		groups.add(navigation);
+		groups.add(features);
+		groups.removeIf(List::isEmpty);
+
+		// every group is a grid of equal cells: 3 columns, or 2 if a label does not fit into a cell
+		int widest = 0;
+		for (List<Btn> group : groups) {
+			for (Btn btn : group) {
+				widest = Math.max(widest, font.width(btn.label()));
+			}
 		}
 		int gap = 4;
+		int groupGap = 6;
 		int cols = (x2 - x1 - 2 * gap) / 3 >= widest + 10 ? 3 : 2;
 		int cellW = (x2 - x1 - (cols - 1) * gap) / cols;
-		int rows = (controls.size() + cols - 1) / cols;
-		int controlsH = rows * 17;
+		int controlsH = 0;
+		for (int g = 0; g < groups.size(); g++) {
+			int groupRows = (groups.get(g).size() + cols - 1) / cols;
+			controlsH += groupRows * (g == 0 ? 18 : 17) + (g > 0 ? groupGap : 0);
+		}
 		int bottomY = frame.pgY2() - 8;
-		int controlsTop = bottomY - controlsH;
-		int mainTop = controlsTop - (controls.isEmpty() ? 0 : 6) - 18;
+		int mainTop = bottomY - controlsH;
 
 		// ---- details (lore of the pet) ----
 		int top = frame.pgY1() + 30;
@@ -365,32 +377,30 @@ public final class PetsView {
 
 		BookStyle.footerDivider(graphics, x1, x2, mainTop - 3);
 
-		// ---- main buttons ----
-		int bx = x1;
-		for (String[] button : mainButtons) {
-			int w = font.width(button[0]) + 18;
-			int mouseButton = Integer.parseInt(button[1]);
-			drawButton(graphics, font, bx, mainTop, w, 16, button[0], mouseX, mouseY, () -> click(container, selected.slot(), mouseButton));
-			bx += w + 6;
-		}
-
-		// ---- the other buttons of the menu (next page, close, ...) ----
-		for (int i = 0; i < controls.size(); i++) {
-			int cx = x1 + (i % cols) * (cellW + gap);
-			int ry = controlsTop + (i / cols) * 17;
-			Entry control = controls.get(i);
-			String label = controlLabels.get(i);
-			if (font.width(label) > cellW - 6) {
-				label = font.plainSubstrByWidth(label, cellW - 6 - font.width("...")) + "...";
+// ---- the buttons ----
+		int ry = mainTop;
+		for (int g = 0; g < groups.size(); g++) {
+			List<Btn> group = groups.get(g);
+			int h = g == 0 ? 16 : 14;
+			int step = h + 2;
+			for (int i = 0; i < group.size(); i++) {
+				Btn btn = group.get(i);
+				int cx = x1 + (i % cols) * (cellW + gap);
+				int cy = ry + (i / cols) * step;
+				String label = btn.label();
+				if (font.width(label) > cellW - 6) {
+					label = font.plainSubstrByWidth(label, cellW - 6 - font.width("...")) + "...";
+				}
+				boolean hovered = drawButton(graphics, font, cx, cy, cellW, h, label, mouseX, mouseY, btn.action());
+				if (hovered && btn.tip() != null) {
+					graphics.setTooltipForNextFrame(font, btn.tip(), mouseX, mouseY);
+				}
 			}
-			boolean hovered = drawButton(graphics, font, cx, ry, cellW, 14, label, mouseX, mouseY,
-					() -> click(container, control.slot(), 0));
-			if (hovered) {
-				graphics.setTooltipForNextFrame(font, control.stack(), mouseX, mouseY);
-			}
+			ry += ((group.size() + cols - 1) / cols) * step + groupGap;
 		}
 	}
 
+	
 	/** A button plate with centered text. Returns true if the mouse is over it. */
 	private static boolean drawButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h, String label,
 									  int mouseX, int mouseY, Runnable action) {
