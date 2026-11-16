@@ -327,6 +327,14 @@ public class DashboardScreen extends Screen {
 			case LEVEL -> list.sort(Comparator.comparingInt((DashboardData.Collection c) ->
 					"MAXED".equals(c.status) ? 999 : c.tierNumber).reversed());
 		}
+		if (DashboardData.BOSS_CATEGORY.equalsIgnoreCase(category)) {
+			// Floor 1-7 bosses in floor order (A-Z), Kuudra always at the end
+			if (sort == Sort.AZ) {
+				list.sort(Comparator.comparingInt(c -> DashboardData.bossIndex(c.name)));
+			} else {
+				list.sort(Comparator.comparingInt(c -> "Kuudra".equals(c.name) ? 1 : 0));
+			}
+		}
 		if (list.isEmpty()) {
 			centered(graphics, "No collections in this category yet - open /collections.", y + 6, TEXT_DIM);
 			return y + 20;
@@ -335,10 +343,6 @@ public class DashboardScreen extends Screen {
 		long scanned = list.stream().filter(c -> !"UNKNOWN".equals(c.status)).count();
 		long maxedCount = list.stream().filter(c -> "MAXED".equals(c.status)).count();
 		String header = category + ": " + maxedCount + "/" + list.size() + " maxed, " + scanned + " scanned";
-		if (DashboardData.DUNGEON_CATEGORY.equals(category)) {
-			header = "Dungeons: " + HudTrackers.shortNumber(list.stream().mapToDouble(c -> c.total).sum())
-					+ " floor completions (Master Mode counts twice)";
-		}
 		String fromMenu = DashboardData.get().categorySummary.get(category);
 		if (fromMenu != null) {
 			header += "   |   /collections: " + fromMenu;
@@ -394,9 +398,12 @@ public class DashboardScreen extends Screen {
 				line2 = "Collection maxed!";
 			}
 			case "PROGRESS" -> {
-				if (DashboardData.DUNGEON_CATEGORY.equals(c.category)) {
-					line1 = "Completions: " + HudTrackers.shortNumber(c.total);
-					line2 = "Normal +1  -  Master +2";
+				if (DashboardData.BOSS_CATEGORY.equalsIgnoreCase(c.category)) {
+					int floor = DashboardData.FLOOR_BOSSES.indexOf(c.name) + 1;
+					line1 = c.needed > 0
+							? "Next: " + HudTrackers.shortNumber(c.current) + " / " + HudTrackers.shortNumber(c.needed)
+							: "Kills: " + HudTrackers.shortNumber(c.current);
+					line2 = floor > 0 ? "Floor " + floor + "  -  Master run counts 2" : "";
 					break;
 				}
 				line1 = c.needed > 0

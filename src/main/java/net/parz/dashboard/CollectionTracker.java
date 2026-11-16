@@ -288,10 +288,17 @@ public final class CollectionTracker {
 		lastRunFloor = floor;
 		lastRunMaster = master;
 		lastRunMs = now;
-		DashboardData.addDungeonCompletion(floor, master ? 2 : 1);
-		DashboardTracker.markDirty();
-		ParzClient.LOGGER.info("Dungeon run finished: {}Floor {} -> {}", master ? "Master Mode " : "", floor,
-				DashboardData.dungeonName(floor));
+		// Floor 1-7 = Bonzo ... Necron: the run counts in that boss collection (normal +1, Master Mode +2)
+		String boss = DashboardData.FLOOR_BOSSES.get(floor - 1);
+		int kills = master ? 2 : 1;
+		DashboardData.Collection c = DashboardData.get().collections.get(boss.toLowerCase(Locale.ROOT));
+		// never opened in /collections yet: the real kills are unknown, the next menu visit fixes that
+		if (c != null && !"UNKNOWN".equals(c.status)) {
+			c.addKills(kills);
+			c.lastUpdate = now;
+			DashboardTracker.markDirty();
+		}
+		ParzClient.LOGGER.info("Dungeon run finished: {}Floor {} -> {} +{}", master ? "Master Mode " : "", floor, boss, kills);
 	}
 
 	// ---- sales / purchases -------------------------------------------------------------

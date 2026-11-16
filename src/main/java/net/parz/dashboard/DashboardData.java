@@ -195,6 +195,19 @@ public final class DashboardData {
 			}
 		}
 
+		/**
+		 * Boss collections (Bonzo ... Kuudra) count kills and have no tier table: the kill count is
+		 * kept in current. Adds kills and updates the progress to the next tier. The next visit of
+		 * the Boss menu in /collections sets the exact values (tier included) again.
+		 */
+		public void addKills(double amount) {
+			current = Math.max(0, current + amount);
+			total = current;
+			if (needed > 0) {
+				percent = Math.min(100, current / needed * 100);
+			}
+		}
+
 		/** Amount needed for the last tier (-1 if unknown). */
 		public long maxAmount() {
 			HypixelResources.CollectionInfo info = HypixelResources.collection(name);
@@ -287,9 +300,8 @@ public final class DashboardData {
 			Skill skill = skills.computeIfAbsent(e.key(), k -> new Skill());
 			skill.name = e.name();
 		}
-		for (int floor = 1; floor <= 7; floor++) {
-			dungeonEntry(floor);
-		}
+		// the old "Dungeons" floor counters (Catacombs Floor I-VII) are gone: floor runs count in Boss now
+		collections.values().removeIf(c -> "Dungeons".equals(c.category));
 		for (List<SkyBlockCatalog.Entry> list : SkyBlockCatalog.COLLECTIONS.values()) {
 			for (SkyBlockCatalog.Entry e : list) {
 				Collection c = collections.computeIfAbsent(e.key(), k -> new Collection());
@@ -302,39 +314,18 @@ public final class DashboardData {
 		}
 	}
 
-	// ---- dungeon floor completions ------------------------------------------------
+	// ---- boss collections ---------------------------------------------------------
 
-	public static final String DUNGEON_CATEGORY = "Dungeons";
-	private static final String[] FLOOR_NAMES = {"", "I", "II", "III", "IV", "V", "VI", "VII"};
+	public static final String BOSS_CATEGORY = "Boss";
+	/** Catacombs floor 1-7 = these bosses (Floor / Master Mode Floor 1 is Bonzo, ... 7 is Necron). */
+	public static final List<String> FLOOR_BOSSES = List.of("Bonzo", "Scarf", "The Professor", "Thorn", "Livid", "Sadan", "Necron");
+	/** Display order in the Boss tab: the floor bosses first, Kuudra at the end. */
+	public static final List<String> BOSS_ORDER = List.of("Bonzo", "Scarf", "The Professor", "Thorn", "Livid", "Sadan", "Necron", "Kuudra");
 
-	public static String dungeonName(int floor) {
-		return "Catacombs Floor " + FLOOR_NAMES[floor];
-	}
-
-	/** The completion counter of a Catacombs floor (1-7); created on demand. */
-	private Collection dungeonEntry(int floor) {
-		Collection c = collections.computeIfAbsent(dungeonName(floor).toLowerCase(Locale.ROOT), k -> new Collection());
-		c.name = dungeonName(floor);
-		c.category = DUNGEON_CATEGORY;
-		c.itemId = "skeleton_skull";
-		if (!"PROGRESS".equals(c.status)) {
-			c.status = "PROGRESS";
-		}
-		c.needed = 0;
-		c.percent = -1;
-		c.tierNumber = (int) c.total;
-		return c;
-	}
-
-	/** Counts finished dungeon runs (normal floor +1, Master Mode floor +2). */
-	public static void addDungeonCompletion(int floor, int amount) {
-		if (floor < 1 || floor > 7) {
-			return;
-		}
-		Collection c = instance.dungeonEntry(floor);
-		c.total += amount;
-		c.tierNumber = (int) c.total;
-		c.lastUpdate = System.currentTimeMillis();
+	/** Position of a boss in the Boss tab (unknown bosses come after Kuudra). */
+	public static int bossIndex(String name) {
+		int index = BOSS_ORDER.indexOf(name);
+		return index >= 0 ? index : BOSS_ORDER.size();
 	}
 
 	/**
