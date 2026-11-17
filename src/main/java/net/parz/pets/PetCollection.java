@@ -252,6 +252,21 @@ public final class PetCollection {
 			OwnedPet owned = best.get(name);
 			rows.add(new Row(name, owned.rarity, owned.rarity, owned.level, iconOf(owned), "", true));
 		}
+		// pets you own first, the highest rarity on top; then the missing ones, those that can get rarer first
+		rows.sort((a, b) -> {
+			if (a.owned() != b.owned()) {
+				return a.owned() ? -1 : 1;
+			}
+			int rarityA = a.owned() ? a.best() : a.max();
+			int rarityB = b.owned() ? b.best() : b.max();
+			if (rarityA != rarityB) {
+				return Integer.compare(rarityB, rarityA);
+			}
+			if (a.owned() && a.level() != b.level()) {
+				return Integer.compare(b.level(), a.level());
+			}
+			return a.name().compareToIgnoreCase(b.name());
+		});
 		cachedRows = rows;
 		cachedVersion = version;
 		return rows;
