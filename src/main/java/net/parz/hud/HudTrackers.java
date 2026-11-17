@@ -57,7 +57,7 @@ public final class HudTrackers {
 	/** Size of a tracker (1.0 = normal). */
 	public static float scale(String key) {
 		Float scale = DashboardData.get().hudScales.get(key);
-		return scale == null ? 1f : Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+		return scale == null ? (MAP_KEY.equals(key) ? 0.7f : 1f) : Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
 	}
 
 	/** Makes a tracker bigger (steps > 0) or smaller (steps < 0). */
@@ -67,11 +67,11 @@ public final class HudTrackers {
 	}
 
 	public static int scaledWidth(String key) {
-		return Math.round((MAP_KEY.equals(key) ? DungeonMap.WIDTH : WIDTH) * scale(key));
+		return Math.round((MAP_KEY.equals(key) ? DungeonMap.width() : WIDTH) * scale(key));
 	}
 
 	public static int scaledHeight(String key) {
-		return Math.round((MAP_KEY.equals(key) ? DungeonMap.HEIGHT : HEIGHT) * scale(key));
+		return Math.round((MAP_KEY.equals(key) ? DungeonMap.height() : HEIGHT) * scale(key));
 	}
 
 	/** Everything the HUD editor can move: the pinned trackers and the dungeon map. */
@@ -109,7 +109,7 @@ public final class HudTrackers {
 		graphics.pose().translate(x, y);
 		graphics.pose().scale(scale, scale);
 		if (MAP_KEY.equals(key)) {
-			DungeonMap.drawUnscaled(graphics, font, 0, 0, true);
+			DungeonMap.drawUnscaled(graphics, font, 0, 0, Minecraft.getInstance().gui.screen() instanceof HudEditorScreen);
 		} else {
 			drawUnscaled(graphics, font, key, 0, 0);
 		}

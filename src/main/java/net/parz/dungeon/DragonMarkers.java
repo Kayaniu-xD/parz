@@ -36,7 +36,9 @@ public final class DragonMarkers {
 	}
 
 	private static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		if (!ParzConfigDefinition.DRAGON_CIRCLES.isEnabled() || !SkyBlockDetector.featuresActive() || !DungeonMap.inDungeon()) {
+		if (!ParzConfigDefinition.DRAGON_CIRCLES.isEnabled() || !SkyBlockDetector.featuresActive()
+				|| !(DungeonMap.inDungeon() || DungeonInfo.inCatacombs())
+				|| (!DungeonInfo.floor().isEmpty() && !DungeonInfo.isFloor7())) {
 			return;
 		}
 		Minecraft client = Minecraft.getInstance();

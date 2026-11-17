@@ -63,7 +63,13 @@ public class ParzClient implements ClientModInitializer {
 						screenToOpen = HudEditorScreen::new;
 						return 1;
 					}))
-					.then(ClientCommands.literal("update").executes(context -> {
+					.then(ClientCommands.literal("dungeon").executes(context -> {
+							for (String line : net.parz.dungeon.DungeonMap.debug(Minecraft.getInstance())) {
+								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] " + line));
+							}
+							return 1;
+						}))
+						.then(ClientCommands.literal("update").executes(context -> {
 						ModUpdater.run(context.getSource());
 						return 1;
 					})));
