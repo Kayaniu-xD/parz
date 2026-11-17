@@ -1,0 +1,422 @@
+[
+ {
+  "name": "Ammonite",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Ankylosaurus",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Armadillo",
+  "max": 5,
+  "skill": "Mining"
+ },
+ {
+  "name": "Baby Yeti",
+  "max": 5,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Bal",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Bat",
+  "max": 5,
+  "skill": "Mining"
+ },
+ {
+  "name": "Bee",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Bingo",
+  "max": 5,
+  "skill": ""
+ },
+ {
+  "name": "Black Cat",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Blaze",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Blue Whale",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Chicken",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Crow",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Dolphin",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Eerie",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Elephant",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Ender Dragon",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Enderman",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Endermite",
+  "max": 5,
+  "skill": "Mining"
+ },
+ {
+  "name": "Flying Fish",
+  "max": 5,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Frog",
+  "max": 4,
+  "skill": "Foraging"
+ },
+ {
+  "name": "Ghoul",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Giraffe",
+  "max": 4,
+  "skill": "Foraging"
+ },
+ {
+  "name": "Glacite Golem",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Goblin",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Golden Dragon",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Golem",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Grandma Wolf",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Griffin",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Guardian",
+  "max": 5,
+  "skill": "Enchanting"
+ },
+ {
+  "name": "Hedgehog",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Hermit Crab",
+  "max": 5,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Horse",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Hound",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Jade Dragon",
+  "max": 4,
+  "skill": "Foraging"
+ },
+ {
+  "name": "Jellyfish",
+  "max": 4,
+  "skill": "Alchemy"
+ },
+ {
+  "name": "Jerry",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Kuudra",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Lion",
+  "max": 4,
+  "skill": "Foraging"
+ },
+ {
+  "name": "Magma Cube",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Mammoth",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Megalodon",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Mithril Golem",
+  "max": 5,
+  "skill": "Mining"
+ },
+ {
+  "name": "Mole",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Monkey",
+  "max": 4,
+  "skill": ""
+ },
+ {
+  "name": "Montezuma",
+  "max": 3,
+  "skill": ""
+ },
+ {
+  "name": "Mooshroom Cow",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Mosquito",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Ocelot",
+  "max": 4,
+  "skill": "Foraging"
+ },
+ {
+  "name": "Owl",
+  "max": 4,
+  "skill": "Taming"
+ },
+ {
+  "name": "Parrot",
+  "max": 4,
+  "skill": "Alchemy"
+ },
+ {
+  "name": "Penguin",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Phoenix",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Pig",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Pigman",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Precursor Drone",
+  "max": 0,
+  "skill": "Combat"
+ },
+ {
+  "name": "Rabbit",
+  "max": 5,
+  "skill": "Farming"
+ },
+ {
+  "name": "Rat",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Reindeer",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Rift Ferret",
+  "max": 3,
+  "skill": "Combat"
+ },
+ {
+  "name": "Rock",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Rose Dragon",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Scatha",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Seal",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Sheep",
+  "max": 4,
+  "skill": "Alchemy"
+ },
+ {
+  "name": "Silverfish",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Skeleton",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Skeleton Horse",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Slug",
+  "max": 4,
+  "skill": "Farming"
+ },
+ {
+  "name": "Snail",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Snowman",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Spider",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Spinosaurus",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "Spirit",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Squid",
+  "max": 4,
+  "skill": "Fishing"
+ },
+ {
+  "name": "T-Rex",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Tarantula",
+  "max": 5,
+  "skill": "Combat"
+ },
+ {
+  "name": "Tiger",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Turtle",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Wisp",
+  "max": 4,
+  "skill": ""
+ },
+ {
+  "name": "Witch",
+  "max": 4,
+  "skill": "Alchemy"
+ },
+ {
+  "name": "Wither Skeleton",
+  "max": 4,
+  "skill": "Mining"
+ },
+ {
+  "name": "Wolf",
+  "max": 4,
+  "skill": "Combat"
+ },
+ {
+  "name": "Zombie",
+  "max": 4,
+  "skill": "Combat"
+ }
+]

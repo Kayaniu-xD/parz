@@ -59,6 +59,18 @@ public final class DashboardData {
 	public Map<String, String> categorySummary = new HashMap<>();
 	/** Minecraft name the skills and collections belong to. */
 	public String username = "";
+	/** Pets seen in the /pets menu, per page ("1", "2", ...). A page is replaced when it is scanned again. */
+	public Map<String, List<OwnedPet>> petPages = new LinkedHashMap<>();
+	/** Number of pages of the pets menu when it was last scanned. */
+	public int petPageCount = 0;
+
+	/** A pet of the player: name without "Pet", rarity 0 (common) - 5 (mythic), level and its saved item icon. */
+	public static final class OwnedPet {
+		public String name = "";
+		public int rarity = 0;
+		public int level = 1;
+		public String iconData = "";
+	}
 
 	public static final class Skill {
 		public String name = "";
@@ -242,6 +254,7 @@ public final class DashboardData {
 		if (instance.hudPositions == null) instance.hudPositions = new HashMap<>();
 		if (instance.hudScales == null) instance.hudScales = new HashMap<>();
 		if (instance.categorySummary == null) instance.categorySummary = new HashMap<>();
+		if (instance.petPages == null) instance.petPages = new LinkedHashMap<>();
 		instance.fillCatalog();
 		applyHypixelResources();
 	}
@@ -262,6 +275,8 @@ public final class DashboardData {
 			data.skills.clear();
 			data.collections.clear();
 			data.categorySummary.clear();
+			data.petPages.clear();
+			data.petPageCount = 0;
 			CAPTURED_ITEMS.clear();
 			ICON_DECODE_FAILED.clear();
 			data.fillCatalog();
@@ -381,7 +396,7 @@ public final class DashboardData {
 		return true;
 	}
 
-	private static String encodeIcon(ItemStack stack) {
+	public static String encodeIcon(ItemStack stack) {
 		try {
 			ClientPacketListener connection = Minecraft.getInstance().getConnection();
 			if (connection == null) {
@@ -394,7 +409,7 @@ public final class DashboardData {
 		}
 	}
 
-	private static ItemStack decodeIcon(String data) {
+	public static ItemStack decodeIcon(String data) {
 		try {
 			ClientPacketListener connection = Minecraft.getInstance().getConnection();
 			if (connection == null) {

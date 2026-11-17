@@ -12,9 +12,12 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ItemLore;
 import net.parz.config.ParzConfigDefinition;
+import net.parz.pets.PetCollection;
 import net.parz.skyblock.SkyBlockDetector;
 
 import java.util.ArrayList;
@@ -58,6 +61,12 @@ public final class PetsView {
 	private static int listMaxScroll;
 	private static double detailScroll;
 	private static int detailMaxScroll;
+	// the pet collection (second view of the book)
+	/** A pet you do not have is shown as a grey dye. */
+	private static final ItemStack MISSING_ICON = new ItemStack(Items.DYE.pick(DyeColor.GRAY));
+	private static boolean collectionMode = false;
+	private static int collectionFilter = 0; // 0 = all, 1 = missing, 2 = not at max rarity
+	private static String collectionSelected = "";
 
 	private PetsView() {
 	}
@@ -178,6 +187,7 @@ public final class PetsView {
 		}
 		// favourite pets (with a star) are at the top of the pet list, the other pets keep the menu order
 		pets.sort(java.util.Comparator.comparing((Entry entry) -> !entry.favorite()));
+		observePets(container, pets);
 
 		// new menu page: forget the selection
 		int containerId = container.getMenu().containerId;
@@ -207,8 +217,13 @@ public final class PetsView {
 
 		graphics.fill(0, 0, screen.width, screen.height, 0xA0000000);
 		BookStyle.drawBook(graphics, frame);
-		drawLeftPage(graphics, font, screen, pets, selected, mouseX, mouseY);
-		drawRightPage(graphics, font, container, selected, controls, mouseX, mouseY);
+		if (collectionMode) {
+			drawCollectionLeft(graphics, font, mouseX, mouseY);
+			drawCollectionRight(graphics, font, container, controls, mouseX, mouseY);
+		} else {
+			drawLeftPage(graphics, font, screen, pets, selected, mouseX, mouseY);
+			drawRightPage(graphics, font, container, selected, controls, mouseX, mouseY);
+		}
 		BookStyle.drawRibbon(graphics, frame);
 	}
 
@@ -278,8 +293,7 @@ public final class PetsView {
 		BookStyle.drawScrollbar(graphics, x2 - 2, top, bottom, view, listScroll, listMaxScroll);
 
 		BookStyle.footerDivider(graphics, x1, x2, frame.pgY2() - 17);
-		String footer = pets.size() + (pets.size() == 1 ? " pet" : " pets");
-		graphics.text(font, footer, (x1 + x2 - font.width(footer)) / 2, frame.pgY2() - 12, BookStyle.TEXT_DIM, true);
+		drawTabs(graphics, font, x1, x2, mouseX, mouseY);
 	}
 
 	private static void drawRightPage(GuiGraphicsExtractor graphics, Font font, AbstractContainerScreen<?> container,
@@ -401,6 +415,233 @@ public final class PetsView {
 	}
 
 	
+	// ======================================================================================
+	// Pet collection
+	// ======================================================================================
+
+	/** Hands the pets of the open page to the collection (it stores them and notices new or removed pets). */
+	private static void observePets(AbstractContainerScreen<?> container, List<Entry> pets) {
+		List<PetCollection.Scanned> scanned = new ArrayList<>();
+		for (Entry entry : pets) {
+			if (!entry.pet()) {
+				continue;
+			}
+			Component[] parts = splitName(entry.stack().getHoverName());
+			Matcher level = Pattern.compile("\\d+").matcher(parts[0].getString());
+			int lvl = level.find() ? Integer.parseInt(level.group()) : 1;
+			scanned.add(new PetCollection.Scanned(parts[1].getString(), PetCollection.rarityOf(parts[1]), lvl, entry.stack()));
+		}
+		PetCollection.observe(container.getMenu().containerId, clean(container.getTitle().getString()).trim(), scanned);
+	}
+
+	/** The two buttons at the bottom of the left page: the pet list and the collection. */
+	private static void drawTabs(GuiGraphicsExtractor graphics, Font font, int x1, int x2, int mouseX, int mouseY) {
+		int y = frame.pgY2() - 14;
+		int half = (x2 - x1 - 4) / 2;
+		drawTab(graphics, font, x1, y, half, 12, "Pets", !collectionMode, mouseX, mouseY, () -> {
+			collectionMode = false;
+			listScroll = 0;
+		});
+		String label = "Collection " + PetCollection.ownedCount() + "/" + PetCollection.totalCount();
+		drawTab(graphics, font, x1 + half + 4, y, half, 12, label, collectionMode, mouseX, mouseY, () -> {
+			collectionMode = true;
+			listScroll = 0;
+		});
+	}
+
+	private static void drawTab(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h, String label,
+								boolean active, int mouseX, int mouseY, Runnable action) {
+		boolean hovered = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
+		BookStyle.plate(graphics, x, y, x + w, y + h, active, hovered, true);
+		graphics.text(font, label, x + (w - font.width(label)) / 2, y + (h - font.lineHeight) / 2 + 1,
+				active ? BookStyle.TEXT : BookStyle.TEXT_DIM, true);
+		HITS.add(new Hit(x, y, x + w, y + h, action));
+	}
+
+	private static List<PetCollection.Row> visibleRows() {
+		List<PetCollection.Row> rows = new ArrayList<>();
+		for (PetCollection.Row row : PetCollection.rows()) {
+			boolean show = switch (collectionFilter) {
+				case 1 -> !row.owned();
+				case 2 -> row.owned() && !row.maxed();
+				default -> true;
+			};
+			if (show) {
+				rows.add(row);
+			}
+		}
+		return rows;
+	}
+
+	private static PetCollection.Row selectedRow(List<PetCollection.Row> rows) {
+		for (PetCollection.Row row : rows) {
+			if (row.name().equals(collectionSelected)) {
+				return row;
+			}
+		}
+		return rows.isEmpty() ? null : rows.getFirst();
+	}
+
+	private static void drawCollectionLeft(GuiGraphicsExtractor graphics, Font font, int mouseX, int mouseY) {
+		int x1 = frame.leftX1();
+		int x2 = frame.leftX2();
+		BookStyle.pageTitle(graphics, font, "Pet Collection", x1, x2, frame.pgY1() + 10);
+
+		List<PetCollection.Row> rows = visibleRows();
+		PetCollection.Row selected = selectedRow(rows);
+		int top = frame.pgY1() + 30;
+		int bottom = frame.pgY2() - 20;
+		int view = bottom - top;
+		listMaxScroll = Math.max(0, rows.size() * ROW_STEP - view);
+		listScroll = clamp(listScroll, 0, listMaxScroll);
+
+		graphics.enableScissor(x1 - 1, top, x2 + 1, bottom);
+		int y = top + 1 - (int) listScroll;
+		boolean mouseInList = mouseX >= x1 && mouseX < x2 && mouseY >= top && mouseY < bottom;
+		for (PetCollection.Row row : rows) {
+			boolean isSelected = row == selected;
+			boolean hovered = mouseInList && mouseY >= y && mouseY < y + ROW_H && mouseX >= x1 && mouseX < x2 - 6;
+			BookStyle.plate(graphics, x1, y, x2 - 6, y + ROW_H, isSelected, hovered, true);
+			// a missing pet is a grey dye
+			graphics.item(row.owned() ? row.icon() : MISSING_ICON, x1 + 3, y + 1);
+
+			int gemX = x2 - 6 - 8;
+			String right = row.owned() ? PetCollection.rarityName(row.best()) : "Missing";
+			int rightColor = row.owned() ? PetCollection.rarityColor(row.best()) : 0xFF7A7A82;
+			int rightX = gemX - 5 - font.width(right);
+			String name = row.name();
+			int nameMax = rightX - 4 - (x1 + 23);
+			if (font.width(name) > nameMax) {
+				name = font.plainSubstrByWidth(name, Math.max(10, nameMax - font.width("..."))) + "...";
+			}
+			int textY = y + (ROW_H - font.lineHeight) / 2 + 1;
+			graphics.text(font, name, x1 + 23, textY, row.owned() ? PetCollection.rarityColor(row.best()) : 0xFF7A7A82, true);
+			graphics.text(font, right, rightX, textY, rightColor, true);
+			if (row.owned()) {
+				BookStyle.gem(graphics, gemX, y + ROW_H / 2, row.maxed() ? BookStyle.GREEN : 0xFFFFAA00);
+			}
+			String pick = row.name();
+			HITS.add(new Hit(x1, y, x2 - 6, y + ROW_H, () -> collectionSelected = pick));
+			y += ROW_STEP;
+		}
+		graphics.disableScissor();
+		BookStyle.drawScrollbar(graphics, x2 - 2, top, bottom, view, listScroll, listMaxScroll);
+
+		BookStyle.footerDivider(graphics, x1, x2, frame.pgY2() - 17);
+		drawTabs(graphics, font, x1, x2, mouseX, mouseY);
+	}
+
+	private static void drawCollectionRight(GuiGraphicsExtractor graphics, Font font, AbstractContainerScreen<?> container,
+											List<Entry> controls, int mouseX, int mouseY) {
+		int x1 = frame.rightX1();
+		int x2 = frame.rightX2();
+		BookStyle.pageTitle(graphics, font, "Collection", x1, x2, frame.pgY1() + 10);
+
+		int total = PetCollection.totalCount();
+		int owned = PetCollection.ownedCount();
+		int maxed = PetCollection.maxedCount();
+		int y = frame.pgY1() + 30;
+		y = drawStat(graphics, font, x1, x2, y, "Collected", owned, total, 0xFF55FF55);
+		y = drawStat(graphics, font, x1, x2, y, "Max rarity", maxed, total, 0xFFFFAA00);
+
+		// how much of the pets menu has been read
+		int scanned = PetCollection.scannedPages();
+		int pages = PetCollection.totalPages();
+		boolean complete = pages > 0 && scanned >= pages;
+		String scanText = scanned == 0 ? "No page scanned yet."
+				: complete ? "All " + pages + " pages of your pets are scanned."
+				: "Pages scanned: " + scanned + "/" + pages + ". Open the other pages of /pets to add them.";
+		int scanColor = complete ? 0xFF55FF55 : 0xFFFFAA00;
+		for (FormattedCharSequence line : font.split(Component.literal(scanText), x2 - x1)) {
+			graphics.text(font, line, x1, y, scanColor, true);
+			y += 10;
+		}
+		y += 4;
+
+		// filters
+		int missing = total - owned;
+		int upgrade = 0;
+		for (PetCollection.Row row : PetCollection.rows()) {
+			if (row.owned() && !row.maxed()) {
+				upgrade++;
+			}
+		}
+		String[] labels = {"All " + total, "Missing " + missing, "Not max " + upgrade};
+		int gap = 4;
+		int width = (x2 - x1 - 2 * gap) / 3;
+		for (int i = 0; i < 3; i++) {
+			int filter = i;
+			drawTab(graphics, font, x1 + i * (width + gap), y, width, 13, labels[i], collectionFilter == i, mouseX, mouseY, () -> {
+				collectionFilter = filter;
+				listScroll = 0;
+			});
+		}
+		y += 19;
+		BookStyle.footerDivider(graphics, x1, x2, y - 3);
+		y += 3;
+
+		// the pet that is selected in the list
+		PetCollection.Row row = selectedRow(visibleRows());
+		if (row != null) {
+			graphics.item(row.owned() ? row.icon() : MISSING_ICON, x1, y);
+			graphics.text(font, row.name(), x1 + 22, y + 4, row.owned() ? PetCollection.rarityColor(row.best()) : 0xFF9A9AA2, true);
+			y += 24;
+			y = drawFact(graphics, font, x1, y, "Highest rarity", PetCollection.rarityName(row.max()), PetCollection.rarityColor(row.max()));
+			if (row.owned()) {
+				y = drawFact(graphics, font, x1, y, "You have", PetCollection.rarityName(row.best()) + " (Lvl " + row.level() + ")",
+						PetCollection.rarityColor(row.best()));
+				y = drawFact(graphics, font, x1, y, "Status", row.maxed() ? "Max rarity" : "Can be upgraded",
+						row.maxed() ? 0xFF55FF55 : 0xFFFFAA00);
+			} else {
+				y = drawFact(graphics, font, x1, y, "Status", "Missing", 0xFFFF6B6B);
+			}
+			if (!row.skill().isEmpty()) {
+				drawFact(graphics, font, x1, y, "Skill", row.skill(), BookStyle.TEXT);
+			}
+		}
+
+		// page buttons, so the next page can be opened and added from here too
+		Entry previous = null;
+		Entry next = null;
+		for (Entry control : controls) {
+			String name = clean(control.stack().getHoverName().getString()).trim().toLowerCase(Locale.ROOT);
+			if (name.equals("previous page")) {
+				previous = control;
+			} else if (name.equals("next page")) {
+				next = control;
+			}
+		}
+		int by = frame.pgY2() - 22;
+		int half = (x2 - x1 - 4) / 2;
+		if (previous != null) {
+			Entry target = previous;
+			drawButton(graphics, font, x1, by, half, 14, "Previous Page", mouseX, mouseY, () -> click(container, target.slot(), 0));
+		}
+		if (next != null) {
+			Entry target = next;
+			drawButton(graphics, font, x1 + half + 4, by, half, 14, "Next Page", mouseX, mouseY, () -> click(container, target.slot(), 0));
+		}
+	}
+
+	/** "Label        12 / 84" with a progress bar below. Returns the y of the next element. */
+	private static int drawStat(GuiGraphicsExtractor graphics, Font font, int x1, int x2, int y, String label, int value, int total, int color) {
+		graphics.text(font, label, x1, y, BookStyle.TEXT_DIM, true);
+		String number = value + " / " + total;
+		graphics.text(font, number, x2 - font.width(number), y, BookStyle.TEXT, true);
+		graphics.fill(x1, y + 11, x2, y + 15, 0xFF2A2A2A);
+		int filled = total <= 0 ? 0 : Math.round((x2 - x1) * (value / (float) total));
+		if (filled > 0) {
+			graphics.fill(x1, y + 11, x1 + filled, y + 15, color);
+		}
+		return y + 22;
+	}
+
+	private static int drawFact(GuiGraphicsExtractor graphics, Font font, int x1, int y, String label, String value, int color) {
+		graphics.text(font, label + ":", x1, y, BookStyle.TEXT_DIM, true);
+		graphics.text(font, value, x1 + font.width(label + ": ") + 4, y, color, true);
+		return y + 11;
+	}
+
 	/** A button plate with centered text. Returns true if the mouse is over it. */
 	private static boolean drawButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h, String label,
 									  int mouseX, int mouseY, Runnable action) {
