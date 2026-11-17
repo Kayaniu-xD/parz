@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Master Mode 7 (and Floor 7), the dragon phase of the boss fight: draws a circle on the screen at each of the
+ * Master Mode 7 only, the dragon phase of the boss fight: draws a circle on the screen at each of the
  * five places where the dragons come out (Power, Flame, Apex, Ice, Soul). The places are fixed, so the circles
  * are there before a dragon spawns. Only your own camera and position are used for this.
  */
@@ -77,8 +77,8 @@ public final class DragonMarkers {
 			lastState = "off (not in a dungeon)";
 			return;
 		}
-		if (!DungeonInfo.floor().isEmpty() && !DungeonInfo.isFloor7()) {
-			lastState = "off (floor " + DungeonInfo.floor() + ")";
+		if (!DungeonInfo.floor().equals("M7")) {
+			lastState = "off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")";
 			return;
 		}
 		if (client.level == null || client.player == null || !inDragonPhase(client)) {
