@@ -50,6 +50,7 @@ public final class DungeonMap {
 	private static final int GAP = 6;
 	private static final int PITCH = ROOM + GAP;
 	private static final int DOOR_W = 10;
+	private static final int ROOM_RADIUS = 5;
 	private static final int PAD = 8;
 	private static final int FOOTER = 26;
 	private static final int MIN_WIDTH = 150;
@@ -518,8 +519,8 @@ public final class DungeonMap {
 	public static void drawUnscaled(GuiGraphicsExtractor graphics, Font font, int x, int y, boolean preview) {
 		int width = width();
 		int height = height();
-		roundRect(graphics, x, y, x + width, y + height, PANEL_EDGE, 4);
-		roundRect(graphics, x + 1, y + 1, x + width - 1, y + height - 1, PANEL, 3);
+		roundRect(graphics, x, y, x + width, y + height, PANEL_EDGE, 8);
+		roundRect(graphics, x + 1, y + 1, x + width - 1, y + height - 1, PANEL, 7);
 
 		int mapW = viewCols * PITCH - GAP;
 		int originX = x + (width - mapW) / 2;
@@ -545,31 +546,39 @@ public final class DungeonMap {
 		for (View view : views) {
 			int fill = fillColor(view);
 			for (int[] cell : view.cells) {
+				boolean left = hasCell(view, cell[0] - 1, cell[1]);
+				boolean right = hasCell(view, cell[0] + 1, cell[1]);
+				boolean up = hasCell(view, cell[0], cell[1] - 1);
+				boolean down = hasCell(view, cell[0], cell[1] + 1);
 				int rx = originX + cell[0] * PITCH;
 				int ry = originY + cell[1] * PITCH;
-				roundRect(graphics, rx, ry, rx + ROOM, ry + ROOM, fill, 3);
+				// only the outer corners of a room are round
+				smoothRect(graphics, rx, ry, rx + ROOM, ry + ROOM, fill, ROOM_RADIUS,
+						!left && !up, !right && !up, !left && !down, !right && !down);
 			}
-			// cells of one big room are joined
+			// cells of one big room are joined without a seam
 			for (int[] a : view.cells) {
-				for (int[] b : view.cells) {
-					if (b[0] == a[0] + 1 && b[1] == a[1]) {
-						graphics.fill(originX + a[0] * PITCH + ROOM, originY + a[1] * PITCH + 1,
-								originX + b[0] * PITCH, originY + a[1] * PITCH + ROOM - 1, fill);
-					} else if (b[1] == a[1] + 1 && b[0] == a[0]) {
-						graphics.fill(originX + a[0] * PITCH + 1, originY + a[1] * PITCH + ROOM,
-								originX + a[0] * PITCH + ROOM - 1, originY + b[1] * PITCH, fill);
+				if (hasCell(view, a[0] + 1, a[1])) {
+					graphics.fill(originX + a[0] * PITCH + ROOM, originY + a[1] * PITCH,
+							originX + (a[0] + 1) * PITCH, originY + a[1] * PITCH + ROOM, fill);
+				}
+				if (hasCell(view, a[0], a[1] + 1)) {
+					graphics.fill(originX + a[0] * PITCH, originY + a[1] * PITCH + ROOM,
+							originX + a[0] * PITCH + ROOM, originY + (a[1] + 1) * PITCH, fill);
+				}
+				// the middle of a block of 2x2 cells (also when one of them is missing, like in an L)
+				int inBlock = 0;
+				for (int dc = 0; dc <= 1; dc++) {
+					for (int dr = 0; dr <= 1; dr++) {
+						if (hasCell(view, a[0] + dc, a[1] + dr)) {
+							inBlock++;
+						}
 					}
 				}
-			}
-			if (view.cells.size() == 4) {
-				int c = Integer.MAX_VALUE;
-				int r = Integer.MAX_VALUE;
-				for (int[] cell : view.cells) {
-					c = Math.min(c, cell[0]);
-					r = Math.min(r, cell[1]);
+				if (inBlock >= 3 && hasCell(view, a[0], a[1])) {
+					graphics.fill(originX + a[0] * PITCH + ROOM, originY + a[1] * PITCH + ROOM,
+							originX + a[0] * PITCH + PITCH, originY + a[1] * PITCH + PITCH, fill);
 				}
-				graphics.fill(originX + c * PITCH + ROOM, originY + r * PITCH + ROOM,
-						originX + c * PITCH + PITCH, originY + r * PITCH + PITCH, fill);
 			}
 		}
 
@@ -579,18 +588,18 @@ public final class DungeonMap {
 				case DungeonScanner.DOOR_WITHER -> 0xFF101010;
 				case DungeonScanner.DOOR_BLOOD -> 0xFFC02828;
 				case DungeonScanner.DOOR_ENTRANCE -> 0xFF1F8A1F;
-				default -> 0xFF6B4119;
+				default -> 0xFF4A2B0E;
 			};
 			int c = Math.min(door.c1(), door.c2());
 			int r = Math.min(door.r1(), door.r2());
 			if (door.r1() == door.r2()) {
 				int rx = originX + c * PITCH + ROOM;
 				int ry = originY + r * PITCH + (ROOM - DOOR_W) / 2;
-				graphics.fill(rx, ry, rx + GAP, ry + DOOR_W, color);
+				smoothRect(graphics, rx - 1, ry, rx + GAP + 1, ry + DOOR_W, color, 2, true, true, true, true);
 			} else {
 				int rx = originX + c * PITCH + (ROOM - DOOR_W) / 2;
 				int ry = originY + r * PITCH + ROOM;
-				graphics.fill(rx, ry, rx + DOOR_W, ry + GAP, color);
+				smoothRect(graphics, rx, ry - 1, rx + DOOR_W, ry + GAP + 1, color, 2, true, true, true, true);
 			}
 		}
 
@@ -694,7 +703,7 @@ public final class DungeonMap {
 		for (String line : lines) {
 			widest = Math.max(widest, font.width(line));
 		}
-		float scale = Math.min(0.9f, Math.min((boxW - 4f) / widest, (boxH - 2f) / (lines.size() * font.lineHeight)));
+		float scale = Math.min(1.0f, Math.min((boxW - 4f) / widest, (boxH - 2f) / (lines.size() * font.lineHeight)));
 		scale = Math.max(0.35f, scale);
 		float total = lines.size() * font.lineHeight * scale;
 		float y = centerY - total / 2f;
@@ -767,7 +776,7 @@ public final class DungeonMap {
 				};
 				int rx = originX + col * PITCH;
 				int ry = originY + row * PITCH;
-				roundRect(graphics, rx, ry, rx + ROOM, ry + ROOM, fill, 3);
+				roundRect(graphics, rx, ry, rx + ROOM, ry + ROOM, fill, ROOM_RADIUS);
 				drawSmall(graphics, font, label, rx + ROOM / 2, ry + ROOM / 2 - 3, TEXT_NAME, 0.5f);
 			}
 		}
@@ -807,15 +816,35 @@ public final class DungeonMap {
 		}
 	}
 
-	/** A rectangle with cut corners. */
+	/** A rectangle with round corners (all four). */
 	private static void roundRect(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, int color, int radius) {
+		smoothRect(graphics, x1, y1, x2, y2, color, radius, true, true, true, true);
+	}
+
+	/** A rectangle with smooth round corners; each corner can be switched off to stay square. */
+	private static void smoothRect(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, int color, int radius,
+								   boolean topLeft, boolean topRight, boolean bottomLeft, boolean bottomRight) {
 		int r = Math.min(radius, Math.min((x2 - x1) / 2, (y2 - y1) / 2));
-		graphics.fill(x1, y1 + r, x2, y2 - r, color);
-		for (int i = 0; i < r; i++) {
-			int inset = Math.max(1, r - 1 - i);
-			graphics.fill(x1 + inset, y1 + i, x2 - inset, y1 + i + 1, color);
-			graphics.fill(x1 + inset, y2 - i - 1, x2 - inset, y2 - i, color);
+		if (r <= 0) {
+			graphics.fill(x1, y1, x2, y2, color);
+			return;
 		}
+		for (int i = 0; i < r; i++) {
+			double dy = r - i - 0.5;
+			int inset = (int) Math.round(r - Math.sqrt(r * (double) r - dy * dy)); // a quarter circle
+			graphics.fill(x1 + (topLeft ? inset : 0), y1 + i, x2 - (topRight ? inset : 0), y1 + i + 1, color);
+			graphics.fill(x1 + (bottomLeft ? inset : 0), y2 - i - 1, x2 - (bottomRight ? inset : 0), y2 - i, color);
+		}
+		graphics.fill(x1, y1 + r, x2, y2 - r, color);
+	}
+
+	private static boolean hasCell(View view, int col, int row) {
+		for (int[] cell : view.cells) {
+			if (cell[0] == col && cell[1] == row) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static int dim(int argb, float factor) {
