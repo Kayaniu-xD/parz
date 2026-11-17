@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.function.Consumer;
 import java.util.zip.ZipFile;
 
@@ -101,6 +103,7 @@ public final class ModUpdater {
 
 	/** Checks for a new version when the game starts (if enabled in /parz > Update). */
 	public static void checkOnStartup() {
+		cleanupLeftovers();
 		if (ParzConfigDefinition.UPDATE_CHECK.isEnabled()) {
 			check();
 		}
@@ -404,53 +407,85 @@ public final class ModUpdater {
 	}
 
 	/**
-	 * Windows keeps the running jar locked, so a small helper program waits until Minecraft is gone and then
-	 * swaps the files. It runs with javaw.exe (no console), so no terminal window opens.
+	 * Windows keeps the running jar locked, so a small helper program (SwapHelper, a class of this mod) waits until
+	 * Minecraft is gone and then swaps the files. It runs with javaw.exe (no console window). The class is copied to
+	 * a temp folder first: it must not run from the mod jar, that would lock the jar that has to be deleted.
+	 * (Minecraft's bundled Java has no compiler, so a source file cannot be started with it.)
 	 */
 	private static void swapWithHelperScript() throws Exception {
-		Path helper = Files.createTempFile("ParzUpdateHelper", ".java");
-		String source = """
-				import java.nio.file.*;
-
-				public class ParzUpdateHelper {
-					public static void main(String[] args) throws Exception {
-						Path oldJar = Path.of(args[0]);
-						Path newFile = Path.of(args[1]);
-						Path finalJar = Path.of(args[2]);
-						Path self = Path.of(args[3]);
-						try {
-							for (int i = 0; i < 60; i++) {
-								Thread.sleep(2000);
-								try {
-									Files.deleteIfExists(oldJar);
-								} catch (Exception stillLocked) {
-									// Minecraft is still closing
-								}
-								if (!Files.exists(oldJar)) {
-									Files.move(newFile, finalJar, StandardCopyOption.REPLACE_EXISTING);
-									break;
-								}
-							}
-						} finally {
-							try {
-								Files.deleteIfExists(self);
-							} catch (Exception ignored) {
-								// the temp file stays, harmless
-							}
-						}
-					}
-				}
-				""";
-		Files.writeString(helper, source, StandardCharsets.UTF_8);
+		Path dir = Files.createTempDirectory("parz-swap");
+		Path cls = dir.resolve("net").resolve("parz").resolve("update").resolve("SwapHelper.class");
+		Files.createDirectories(cls.getParent());
+		try (InputStream in = ModUpdater.class.getResourceAsStream("SwapHelper.class")) {
+			if (in == null) {
+				throw new UpdateException("SwapHelper is missing in the mod jar");
+			}
+			Files.copy(in, cls, StandardCopyOption.REPLACE_EXISTING);
+		}
 
 		Path javaHome = Path.of(System.getProperty("java.home"));
 		Path javaw = javaHome.resolve("bin").resolve("javaw.exe");
 		String executable = Files.exists(javaw) ? javaw.toString() : javaHome.resolve("bin").resolve("java.exe").toString();
-		new ProcessBuilder(executable, helper.toString(), pendingOld.toString(), pendingNew.toString(),
-				pendingFinal.toString(), helper.toString())
+		new ProcessBuilder(executable, "-cp", dir.toString(), "net.parz.update.SwapHelper", pendingOld.toString(),
+				pendingNew.toString(), pendingFinal.toString(), dir.toString())
 				.redirectErrorStream(true)
 				.redirectOutput(ProcessBuilder.Redirect.DISCARD)
 				.start();
+	}
+
+	/**
+	 * Called when the game starts: removes leftovers of earlier updates in the mods folder (half downloaded
+	 * ".part" files, ".new" files that are not newer than this version, older Parz jars). A newer ".new" file whose
+	 * swap did not happen is scheduled again, so it replaces the mod when you close the game.
+	 */
+	public static void cleanupLeftovers() {
+		try {
+			Path running = FabricLoader.getInstance().getModContainer(ParzClient.MOD_ID)
+					.map(c -> c.getOrigin().getPaths()).filter(p -> p.size() == 1).map(List::getFirst).orElse(null);
+			if (running == null || !Files.isRegularFile(running) || !running.toString().endsWith(".jar")) {
+				return;
+			}
+			Path modsDir = running.getParent();
+			String current = currentVersion();
+			String minecraft = runningMinecraft();
+			Pattern name = Pattern.compile("^parz-(\\d+(?:\\.\\d+)*)(?:-mc([\\d.]+))?\\.jar(\\.new|\\.part)?$");
+			try (var files = Files.list(modsDir)) {
+				for (Path file : files.toList()) {
+					Matcher m = name.matcher(file.getFileName().toString());
+					if (!m.matches() || file.equals(running)) {
+						continue;
+					}
+					String version = m.group(1);
+					String fileMinecraft = m.group(2) != null ? m.group(2) : PLAIN_ASSET_MINECRAFT;
+					String suffix = m.group(3);
+					int newer = compareVersions(version, current);
+					if (".part".equals(suffix)) {
+						Files.deleteIfExists(file);
+					} else if (".new".equals(suffix)) {
+						if (newer > 0 && fileMinecraft.equals(minecraft) && isValidJar(file)) {
+							String jarName = file.getFileName().toString();
+							scheduleSwap(file, running, modsDir.resolve(jarName.substring(0, jarName.length() - ".new".length())));
+							ParzClient.LOGGER.info("Parz {} is waiting to be installed when the game closes", version);
+						} else {
+							Files.deleteIfExists(file);
+						}
+					} else if (newer < 0 && fileMinecraft.equals(minecraft)) {
+						Files.deleteIfExists(file); // an old Parz jar that was not removed
+					}
+				}
+			}
+		} catch (Exception e) {
+			ParzClient.LOGGER.warn("Could not clean up old Parz files", e);
+		}
+	}
+
+	private static boolean isValidJar(Path file) {
+		try {
+			verifyJar(file);
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	// ---- helpers -----------------------------------------------------------------------
