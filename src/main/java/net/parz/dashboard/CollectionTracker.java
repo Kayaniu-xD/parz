@@ -42,6 +42,8 @@ public final class CollectionTracker {
 
 	/** "Master Mode The Catacombs - Floor VI" (header of the end-of-run summary). */
 	private static final Pattern DUNGEON_HEADER = Pattern.compile("(Master Mode )?(?:The )?Catacombs - Floor ([IVX]+|\\d)\\b");
+	/** "Master Mode - M7" / "The Catacombs - F7" (newer header of the end-of-run summary). */
+	private static final Pattern DUNGEON_HEADER_SHORT = Pattern.compile("^(Master Mode|(?:The )?Catacombs)\\s*[-\u2013\u2014]\\s*([FM])(\\d)\\b");
 	/** "Floor V completion" / "Master Mode Floor VI completed". */
 	private static final Pattern DUNGEON_DONE = Pattern.compile("(Master(?: Mode)? )?(?:The Catacombs )?Floor ([IVX]+|\\d) [Cc]omplet(?:ion|ed)");
 	/** Lines of the summary that only appear when the boss was defeated. */
@@ -256,6 +258,13 @@ public final class CollectionTracker {
 		Matcher done = DUNGEON_DONE.matcher(text);
 		if (done.find()) {
 			completeFloor(parseFloor(done.group(2)), done.group(1) != null);
+			return;
+		}
+		Matcher shortHeader = DUNGEON_HEADER_SHORT.matcher(text);
+		if (shortHeader.find()) {
+			pendingFloor = parseFloor(shortHeader.group(3));
+			pendingMaster = shortHeader.group(1).startsWith("Master") || shortHeader.group(2).equals("M");
+			pendingMs = now;
 			return;
 		}
 		Matcher header = DUNGEON_HEADER.matcher(text);
