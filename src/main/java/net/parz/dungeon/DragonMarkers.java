@@ -42,6 +42,7 @@ public final class DragonMarkers {
 
 	private static String lastState = "not checked yet";
 	private static boolean latched = false;
+	private static long outOfDungeonSince = 0;
 	private static net.minecraft.client.multiplayer.ClientLevel lastLevel = null;
 
 	// the camera of the frame that is drawn
@@ -75,6 +76,16 @@ public final class DragonMarkers {
 		return lines;
 	}
 
+	/** Ends the circles and says why in the chat, so a wrong end can be found. */
+	private static void drop(Minecraft client, String reason) {
+		latched = false;
+		outOfDungeonSince = 0;
+		lastState = "off (" + reason + ")";
+		if (client.player != null) {
+			client.player.sendSystemMessage(net.minecraft.network.chat.Component.literal("[Parz] Dragon circles off: " + reason));
+		}
+	}
+
 	/** The boss room is at positive coordinates (the dungeon rooms are at negative ones); the dragons are low. */
 	private static boolean inDragonPhase(Minecraft client) {
 		return client.player != null && client.player.getX() > 0 && client.player.getZ() > 0
@@ -92,11 +103,14 @@ public final class DragonMarkers {
 			return;
 		}
 		if (client.level != lastLevel) {
-			lastLevel = client.level; // a new world: start again
-			latched = false;
+			// a new world object: only a different place ends the circles, not a reload inside the boss fight
+			lastLevel = client.level;
+			if (latched && !DungeonInfo.inCatacombs()) {
+				drop(client, "the world changed and you are not in a dungeon");
+			}
 		}
-		// Once the dragon phase of M7 has been recognised the circles stay until you leave the boss room. The
-		// sidebar and your height change during the fight, so they are only looked at to start.
+		// Once the dragon phase of M7 has been recognised the circles stay. The sidebar and your height change
+		// during the fight (and when the Wither King spawns), so they are only looked at to start.
 		if (!latched) {
 			if (!SkyBlockDetector.featuresActive() || !DungeonInfo.inCatacombs()) {
 				lastState = "off (not in a dungeon)";
@@ -111,10 +125,19 @@ public final class DragonMarkers {
 				return;
 			}
 			latched = true;
+			outOfDungeonSince = 0;
 		}
-		if (client.player.getX() <= 0 || client.player.getZ() <= 0) {
-			latched = false; // back in the dungeon rooms
-			lastState = "off (left the boss room)";
+		// they only end when you really are somewhere else: out of the dungeon for 30 seconds, or back in the rooms
+		if (DungeonInfo.inCatacombs()) {
+			outOfDungeonSince = 0;
+		} else if (outOfDungeonSince == 0) {
+			outOfDungeonSince = System.currentTimeMillis();
+		} else if (System.currentTimeMillis() - outOfDungeonSince > 30_000) {
+			drop(client, "you have not been in a dungeon for 30 seconds");
+			return;
+		}
+		if (client.player.getX() < -5 && client.player.getZ() < -5) {
+			drop(client, "you are back in the dungeon rooms");
 			return;
 		}
 
