@@ -2,6 +2,7 @@ package net.parz.dungeon;
 
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -17,7 +18,9 @@ import java.util.Map;
  * door (or a wall).
  *
  * Room cells are at even numbers of the 11x11 "door grid" (0, 2, ... 10), door slots at odd numbers.
- * A room is recognised by the hash of the blocks in the column at the middle of one of its cells.
+ * Every cell is recognised on its own by the hash of the blocks in the column at its middle. Cells with the
+ * same room name next to each other are one room - so a recognised room is never joined to a wrong neighbour.
+ * Only cells that are not recognised are joined by looking at the roof between them.
  */
 public final class DungeonScanner {
 	public static final int WORLD_MIN = -200;
@@ -37,10 +40,9 @@ public final class DungeonScanner {
 		public int roof;
 		public RoomDatabase.RoomInfo info;
 		public boolean entrance; // the start room (from the database, or where you spawned)
-		int doorlessPasses = 0;
 
 		public String name() {
-			return entrance ? "Entrance" : info != null ? info.name() : "";
+			return info != null ? info.name() : entrance ? "Entrance" : "";
 		}
 
 		/** normal, puzzle, trap, yellow, blood, fairy, rare, entrance or unknown. */
@@ -73,13 +75,21 @@ public final class DungeonScanner {
 		}
 	}
 
-	private final List<Room> rooms = new ArrayList<>();
-	private final Map<Integer, Room> byCell = new HashMap<>();
+	// what has been read from the world
+	private final Integer[] cellRoof = new Integer[36];
+	private final RoomDatabase.RoomInfo[] cellInfo = new RoomDatabase.RoomInfo[36];
+	private final int[] cellCore = new int[36];
+	private final int[] cellLegacyCore = new int[36];
+	private final int[] doorlessPasses = new int[36];
+	private final Map<Integer, Integer> slotRoof = new HashMap<>();
 	private final Map<Integer, Door> doors = new HashMap<>();
 	private List<int[]> remaining = allCoordinates();
 	private int passes = 0;
-	private int unidentified = 0;
-	private int lastUnknownCore = 0;
+	private int[] forcedEntrance = null;
+
+	// what is built from it
+	private List<Room> rooms = new ArrayList<>();
+	private final Map<Integer, Room> byCell = new HashMap<>();
 
 	private static List<int[]> allCoordinates() {
 		List<int[]> list = new ArrayList<>();
@@ -106,12 +116,15 @@ public final class DungeonScanner {
 		return byCell.get(row * 6 + col);
 	}
 
+	/** Rooms (not cells) that have no name. */
 	public int unidentified() {
-		return unidentified;
-	}
-
-	public int lastUnknownCore() {
-		return lastUnknownCore;
+		int count = 0;
+		for (Room room : rooms) {
+			if (room.info == null && !room.entrance) {
+				count++;
+			}
+		}
+		return count;
 	}
 
 	public int passes() {
@@ -122,13 +135,22 @@ public final class DungeonScanner {
 		return !remaining.isEmpty();
 	}
 
+	/** Hashes of a cell for the debug output: modern, legacy. */
+	public int[] coresOf(int col, int row) {
+		return new int[]{cellCore[row * 6 + col], cellLegacyCore[row * 6 + col]};
+	}
+
 	public void reset() {
-		rooms.clear();
-		byCell.clear();
+		java.util.Arrays.fill(cellRoof, null);
+		java.util.Arrays.fill(cellInfo, null);
+		java.util.Arrays.fill(doorlessPasses, 0);
+		slotRoof.clear();
 		doors.clear();
 		remaining = allCoordinates();
 		passes = 0;
-		unidentified = 0;
+		forcedEntrance = null;
+		rooms = new ArrayList<>();
+		byCell.clear();
 	}
 
 	public static int worldX(int gridCoordinate) {
@@ -161,95 +183,77 @@ public final class DungeonScanner {
 			if (c[0] % 2 == 1 || c[1] % 2 == 1) {
 				doorSlot(level, c[0], c[1], wx, wz, roof);
 			} else {
-				roomCell(level, c[0] / 2, c[1] / 2, wx, wz, roof);
+				cellRoof[(c[1] / 2) * 6 + c[0] / 2] = roof;
 			}
 		}
 		remaining = keep;
 
-		unidentified = 0;
-		for (Room room : rooms) {
-			if (room.info == null && !room.entrance) {
-				identify(level, room);
-			}
-			if (room.info == null && !room.entrance) {
-				unidentified++;
+		// every cell is recognised on its own; cells that are not recognised yet are tried again each pass
+		for (int idx = 0; idx < 36; idx++) {
+			if (cellRoof[idx] != null && cellInfo[idx] == null) {
+				identify(level, idx);
 			}
 		}
-		prune();
+		rebuild();
 	}
 
-	// ---- rooms ----
+	// ---- recognising rooms ----
 
-	private void roomCell(ClientLevel level, int col, int row, int wx, int wz, int roof) {
-		Room room = byCell.get(row * 6 + col);
-		if (room == null) {
-			room = new Room();
-			room.roof = roof;
-			room.cells.add(new int[]{col, row});
-			byCell.put(row * 6 + col, room);
-			rooms.add(room);
-			identify(level, room);
+	private void identify(ClientLevel level, int idx) {
+		int col = idx % 6;
+		int row = idx / 6;
+		int x = worldX(col * 2);
+		int z = worldX(row * 2);
+		int modern = modernCore(level, x, z);
+		cellCore[idx] = modern;
+		RoomDatabase.RoomInfo info = RoomDatabase.byModernCore(modern);
+		if (info == null) {
+			int legacy = legacyCore(level, x, z);
+			cellLegacyCore[idx] = legacy;
+			info = RoomDatabase.byLegacyCore(legacy);
 		}
-		if (room.entrance || (room.info != null && room.info.type().equals("entrance"))) {
-			return; // the start room is never part of a bigger room
-		}
-		int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-		for (int[] d : dirs) {
-			int nx = col + d[0];
-			int nz = row + d[1];
-			if (nx < 0 || nz < 0 || nx > 5 || nz > 5) {
-				continue;
-			}
-			int gapX = wx + d[0] * HALF_STRIDE;
-			int gapZ = wz + d[1] * HALF_STRIDE;
-			// the roof goes on across the gap: one big room
-			boolean solid = !isAir(level, gapX, roof, gapZ);
-			boolean open = isAir(level, gapX, roof + 1, gapZ);
-			if (!solid || !open) {
-				continue;
-			}
-			Room other = byCell.get(nz * 6 + nx);
-			if (other == room) {
-				continue;
-			}
-			if (other != null) {
-				if (other.entrance || (other.info != null && other.info.type().equals("entrance"))) {
-					continue;
+		cellInfo[idx] = info;
+	}
+
+	/** The hash of one column as Odin computes it (modern block names, y 140 down to 12). */
+	public static int modernCore(ClientLevel level, int x, int z) {
+		StringBuilder sb = new StringBuilder(2048);
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		boolean foundHighest = false;
+		int bedrock = 0;
+		for (int y = 140; y >= 12; y--) {
+			BlockState state = level.getBlockState(pos.set(x, y, z));
+			Block block = state.getBlock();
+			if (!foundHighest) {
+				if (!state.isAir() && block != Blocks.GOLD_BLOCK) {
+					foundHighest = true;
+				} else {
+					sb.append('0');
 				}
-				merge(room, other);
-			} else {
-				room.cells.add(new int[]{nx, nz});
-				byCell.put(nz * 6 + nx, room);
+			}
+			if (foundHighest) {
+				if (state.isAir() && bedrock >= 2 && y < 69) {
+					for (int i = 0; i < y - 11; i++) {
+						sb.append('0');
+					}
+					break;
+				}
+				if (block == Blocks.BEDROCK) {
+					bedrock++;
+				} else {
+					bedrock = 0;
+					if (block == Blocks.OAK_PLANKS || block == Blocks.TRAPPED_CHEST || block == Blocks.CHEST) {
+						continue;
+					}
+				}
+				sb.append(block);
 			}
 		}
+		return sb.toString().hashCode();
 	}
 
-	private void merge(Room into, Room from) {
-		for (int[] cell : from.cells) {
-			into.cells.add(cell);
-			byCell.put(cell[1] * 6 + cell[0], into);
-		}
-		rooms.remove(from);
-		if (into.info == null) {
-			into.info = from.info;
-		}
-	}
-
-	private void identify(ClientLevel level, Room room) {
-		for (int[] cell : room.cells) {
-			int core = core(level, worldX(cell[0] * 2), worldX(cell[1] * 2));
-			RoomDatabase.RoomInfo info = RoomDatabase.byCore(core);
-			if (info != null) {
-				room.info = info;
-				room.entrance = info.type().equals("entrance");
-				return;
-			}
-			lastUnknownCore = core;
-		}
-	}
-
-	/** The hash of the blocks of one column, as the room data expects it (1.8 block ids, y 140 down to 12). */
-	public static int core(ClientLevel level, int x, int z) {
+	/** The hash of one column as IllegalMap computes it (1.8 block ids, y 140 down to 12). */
+	public static int legacyCore(ClientLevel level, int x, int z) {
 		StringBuilder sb = new StringBuilder(260);
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int y = 140; y >= 12; y--) {
@@ -263,17 +267,10 @@ public final class DungeonScanner {
 		return sb.toString().hashCode();
 	}
 
-	/** Marks the room that contains this cell as the start room (used when the database does not know it). */
-	public void markEntrance(int col, int row) {
-		Room room = byCell.get(row * 6 + col);
-		if (room != null && rooms.stream().noneMatch(r -> r.entrance)) {
-			room.entrance = true;
-		}
-	}
-
 	// ---- doors ----
 
 	private void doorSlot(ClientLevel level, int gx, int gz, int wx, int wz, int roof) {
+		slotRoof.put(key(gx, gz), roof);
 		int below = LegacyBlocks.of(level.getBlockState(new BlockPos(wx, 69, wz)));
 		if (below == 97) {
 			doors.put(key(gx, gz), new Door(gx, gz, DOOR_ENTRANCE));
@@ -287,13 +284,6 @@ public final class DungeonScanner {
 				type = DOOR_BLOOD;
 			}
 			doors.put(key(gx, gz), new Door(gx, gz, type));
-			return;
-		}
-		// no door: the two rooms next to the slot are one room if their roofs line up
-		Room a = gx % 2 == 1 ? byCell.get((gz / 2) * 6 + (gx - 1) / 2) : byCell.get(((gz - 1) / 2) * 6 + gx / 2);
-		Room b = gx % 2 == 1 ? byCell.get((gz / 2) * 6 + (gx + 1) / 2) : byCell.get(((gz + 1) / 2) * 6 + gx / 2);
-		if (a != null && b != null && a != b && a.roof == b.roof && a.roof == roof && !a.entrance && !b.entrance) {
-			merge(a, b);
 		}
 	}
 
@@ -301,22 +291,129 @@ public final class DungeonScanner {
 		return gz * 11 + gx;
 	}
 
-	/** Rooms that are not identified and have no door at all are leftovers outside of a smaller dungeon. */
-	private void prune() {
+	// ---- building the rooms ----
+
+	public void markEntrance(int col, int row) {
+		if (forcedEntrance == null) {
+			forcedEntrance = new int[]{col, row};
+		}
+	}
+
+	private void rebuild() {
+		List<Room> result = new ArrayList<>();
+		Map<Integer, Room> map = new HashMap<>();
+
+		// 1. recognised cells: next to each other with the same name = one room
+		for (int idx = 0; idx < 36; idx++) {
+			if (cellRoof[idx] == null || cellInfo[idx] == null || map.containsKey(idx)) {
+				continue;
+			}
+			Room room = new Room();
+			room.info = cellInfo[idx];
+			room.roof = cellRoof[idx];
+			room.entrance = room.info.type().equals("entrance");
+			List<Integer> queue = new ArrayList<>();
+			queue.add(idx);
+			map.put(idx, room);
+			for (int i = 0; i < queue.size(); i++) {
+				int current = queue.get(i);
+				room.cells.add(new int[]{current % 6, current / 6});
+				for (int next : neighbours(current)) {
+					if (!map.containsKey(next) && cellRoof[next] != null && cellInfo[next] != null
+							&& cellInfo[next].name().equals(room.info.name())) {
+						map.put(next, room);
+						queue.add(next);
+					}
+				}
+			}
+			result.add(room);
+		}
+
+		// 2. cells that are not recognised: joined by a roof that goes on across the gap
+		for (int idx = 0; idx < 36; idx++) {
+			if (cellRoof[idx] == null || cellInfo[idx] != null || map.containsKey(idx)) {
+				continue;
+			}
+			Room room = new Room();
+			room.roof = cellRoof[idx];
+			List<Integer> queue = new ArrayList<>();
+			queue.add(idx);
+			map.put(idx, room);
+			for (int i = 0; i < queue.size(); i++) {
+				int current = queue.get(i);
+				room.cells.add(new int[]{current % 6, current / 6});
+				for (int next : neighbours(current)) {
+					if (!map.containsKey(next) && cellRoof[next] != null && cellInfo[next] == null && roofContinues(current, next)) {
+						map.put(next, room);
+						queue.add(next);
+					}
+				}
+			}
+			result.add(room);
+		}
+
+		// 3. the start room, if the database did not know it
+		boolean hasEntrance = false;
+		for (Room room : result) {
+			hasEntrance |= room.entrance;
+		}
+		if (!hasEntrance && forcedEntrance != null) {
+			Room room = map.get(forcedEntrance[1] * 6 + forcedEntrance[0]);
+			if (room != null) {
+				room.entrance = true;
+			}
+		}
+
+		// 4. leftovers outside of a smaller dungeon: not recognised and without any door
 		List<Room> remove = new ArrayList<>();
-		for (Room room : rooms) {
-			if (room.info != null || room.entrance || hasDoor(room)) {
-				room.doorlessPasses = 0;
-			} else if (++room.doorlessPasses >= PRUNE_PASSES) {
+		for (Room room : result) {
+			boolean hasDoor = room.info != null || room.entrance || hasDoor(room);
+			for (int[] cell : room.cells) {
+				int idx = cell[1] * 6 + cell[0];
+				doorlessPasses[idx] = hasDoor ? 0 : doorlessPasses[idx] + 1;
+			}
+			if (!hasDoor && doorlessPasses[room.cells.get(0)[1] * 6 + room.cells.get(0)[0]] >= PRUNE_PASSES) {
 				remove.add(room);
 			}
 		}
 		for (Room room : remove) {
+			result.remove(room);
 			for (int[] cell : room.cells) {
-				byCell.remove(cell[1] * 6 + cell[0]);
+				map.remove(cell[1] * 6 + cell[0]);
 			}
-			rooms.remove(room);
 		}
+
+		rooms = result;
+		byCell.clear();
+		byCell.putAll(map);
+	}
+
+	private static List<Integer> neighbours(int idx) {
+		List<Integer> list = new ArrayList<>(4);
+		int col = idx % 6;
+		int row = idx / 6;
+		if (col > 0) {
+			list.add(idx - 1);
+		}
+		if (col < 5) {
+			list.add(idx + 1);
+		}
+		if (row > 0) {
+			list.add(idx - 6);
+		}
+		if (row < 5) {
+			list.add(idx + 6);
+		}
+		return list;
+	}
+
+	/** Two cells that are not recognised are one room if the roof is as high in the gap as in both cells. */
+	private boolean roofContinues(int a, int b) {
+		int gx = (a % 6) + (b % 6);
+		int gz = (a / 6) + (b / 6);
+		Integer gap = slotRoof.get(key(gx, gz));
+		return gap != null && !doors.containsKey(key(gx, gz))
+				&& gap.equals(cellRoof[a]) && gap.equals(cellRoof[b]);
 	}
 
 	private boolean hasDoor(Room room) {
@@ -343,9 +440,5 @@ public final class DungeonScanner {
 			return y;
 		}
 		return null;
-	}
-
-	private static boolean isAir(ClientLevel level, int x, int y, int z) {
-		return level.getBlockState(new BlockPos(x, y, z)).isAir();
 	}
 }

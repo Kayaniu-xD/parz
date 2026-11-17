@@ -220,17 +220,16 @@ public final class DungeonMap {
 		out.add(DungeonInfo.describe());
 		out.add("room hashes in database: " + RoomDatabase.size());
 		out.add("scan passes: " + scanner.passes() + ", rooms found: " + scanner.rooms().size()
-				+ ", not recognised: " + scanner.unidentified() + ", doors: " + scanner.doors().size());
+				+ ", without a name: " + scanner.unidentified() + ", doors: " + scanner.doors().size());
 		out.add("shown as " + viewCols + "x" + viewRows + ", turned by " + rotation * 90 + " degrees, start cell: "
 				+ (startCell == null ? "?" : startCell[0] + "," + startCell[1]));
-		if (client.level != null) {
-			int shown = 0;
-			for (DungeonScanner.Room room : scanner.rooms()) {
-				if (room.info == null && !room.entrance && shown++ < 4) {
-					int[] cell = room.cells.get(0);
-					out.add("unknown room at " + cell[0] + "," + cell[1] + " (" + room.cells.size() + " cells) core "
-							+ DungeonScanner.core(client.level, DungeonScanner.worldX(cell[0] * 2), DungeonScanner.worldX(cell[1] * 2)));
-				}
+		int shown = 0;
+		for (DungeonScanner.Room room : scanner.rooms()) {
+			if (room.info == null && !room.entrance && shown++ < 6) {
+				int[] cell = room.cells.get(0);
+				int[] cores = scanner.coresOf(cell[0], cell[1]);
+				out.add("no name for the room at " + cell[0] + "," + cell[1] + " (" + room.cells.size() + " cells), cores "
+						+ cores[0] + " / " + cores[1]);
 			}
 		}
 		out.add("magic map for check marks: " + (mapFound ? "found" : "none") + ", aligned: " + mapAligned);
