@@ -89,8 +89,8 @@ public final class ParzConfigDefinition {
 
 	public static final Toggle DRAGON_CIRCLES = DUNGEONS.toggle(
 			"dungeons.dragon_circles",
-			"M7 Dragon Boxes",
-			"Only in the Master Mode 7 boss fight (dragon phase): for every dragon whose statue is still standing, a box around its area, a beam at its waypoint and a circle on the neck of its statue. Gone when the dragon is dead.",
+			"M7 Dragon Circles",
+			"Only in the Master Mode 7 boss fight (dragon phase): a circle on the neck of each of the 5 dragons. The circles are fixed in the world and stay, also before a dragon spawns.",
 			true);
 
 	// ---- Update --------------------------------------------------------------------
