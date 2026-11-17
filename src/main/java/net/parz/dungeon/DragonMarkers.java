@@ -11,8 +11,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import net.parz.config.ParzConfigDefinition;
 import net.parz.skyblock.SkyBlockDetector;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,10 +88,10 @@ public final class DragonMarkers {
 
 		Camera camera = client.gameRenderer.mainCamera();
 		Vec3 cameraPos = camera.position();
-		Quaternionf rotation = camera.rotation();
-		Vector3f forward = new Vector3f(0, 0, 1).rotate(rotation);
-		Vector3f left = new Vector3f(1, 0, 0).rotate(rotation);
-		Vector3f up = new Vector3f(0, 1, 0).rotate(rotation);
+		// the directions the camera looks / goes left / goes up, already in world coordinates
+		Vector3fc forward = camera.forwardVector();
+		Vector3fc left = camera.leftVector();
+		Vector3fc up = camera.upVector();
 
 		float fov = camera.getFov();
 		if (fov <= 0.01f) {
@@ -111,12 +110,12 @@ public final class DragonMarkers {
 			double dx = spot.x() - cameraPos.x;
 			double dy = spot.y() - cameraPos.y;
 			double dz = spot.z() - cameraPos.z;
-			double depth = dx * forward.x + dy * forward.y + dz * forward.z;
+			double depth = dx * forward.x() + dy * forward.y() + dz * forward.z();
 			if (depth < 0.5) {
 				continue; // behind you
 			}
-			double side = dx * left.x + dy * left.y + dz * left.z;
-			double height = dx * up.x + dy * up.y + dz * up.z;
+			double side = dx * left.x() + dy * left.y() + dz * left.z();
+			double height = dx * up.x() + dy * up.y() + dz * up.z();
 			double screenX = (0.5 - side / depth / (tan * aspect) * 0.5) * screenW;
 			double screenY = (0.5 - height / depth / tan * 0.5) * screenH;
 			double radius = RING_RADIUS_BLOCKS / depth / tan * 0.5 * screenH;
