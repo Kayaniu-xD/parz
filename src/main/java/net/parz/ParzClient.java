@@ -24,6 +24,8 @@ import net.parz.skyblock.SkyBlockDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 public class ParzClient implements ClientModInitializer {
@@ -64,7 +66,9 @@ public class ParzClient implements ClientModInitializer {
 						return 1;
 					}))
 					.then(ClientCommands.literal("dungeon").executes(context -> {
-							for (String line : net.parz.dungeon.DungeonMap.debug(Minecraft.getInstance())) {
+							List<String> lines = new ArrayList<>(net.parz.dungeon.DungeonMap.debug(Minecraft.getInstance()));
+							lines.addAll(net.parz.dungeon.DragonMarkers.debug(Minecraft.getInstance()));
+							for (String line : lines) {
 								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] " + line));
 							}
 							return 1;

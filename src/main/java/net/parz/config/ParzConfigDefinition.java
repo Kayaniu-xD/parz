@@ -90,7 +90,7 @@ public final class ParzConfigDefinition {
 	public static final Toggle DRAGON_CIRCLES = DUNGEONS.toggle(
 			"dungeons.dragon_circles",
 			"M7 Dragon Circles",
-			"Master Mode 7: draws a circle on your screen at the neck of every dragon.",
+			"Master Mode 7, dragon phase of the boss fight: draws a circle on your screen at each of the 5 places where the dragons come out (Power, Flame, Apex, Ice, Soul).",
 			true);
 
 	// ---- Update --------------------------------------------------------------------
