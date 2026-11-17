@@ -37,6 +37,8 @@ public final class PetCollection {
 	public static final int[] RARITY_COLORS = {0xFFFFFFFF, 0xFF55FF55, 0xFF6E8CFF, 0xFFC25BFF, 0xFFFFAA00, 0xFFFF55FF};
 	private static final int[] GAME_COLORS = {0xFFFFFF, 0x55FF55, 0x5555FF, 0xAA00AA, 0xFFAA00, 0xFF55FF};
 	private static final int PAGE_SIZE = 28;
+	/** Pets that are not shown in the collection (event pets). */
+	private static final java.util.Set<String> HIDDEN = java.util.Set.of("Bingo", "Montezuma");
 	private static final Pattern PAGE = Pattern.compile("^\\((\\d+)/(\\d+)\\)");
 	private static final Pattern SYMBOLS = Pattern.compile("[^A-Za-z' \\-]");
 
@@ -103,6 +105,9 @@ public final class PetCollection {
 		String name = SYMBOLS.matcher(shown).replaceAll("").trim().replaceAll("\\s+", " ");
 		if (name.endsWith(" Wisp")) {
 			return "Wisp"; // Droplet, Frost, Flame ... Wisp are all the Wisp pet
+		}
+		if (name.endsWith(" Dragon Egg")) {
+			return name.substring(0, name.length() - " Egg".length()); // the dragon pets are eggs until level 100
 		}
 		return name;
 	}
@@ -218,15 +223,22 @@ public final class PetCollection {
 		Map<String, OwnedPet> best = new LinkedHashMap<>();
 		for (List<OwnedPet> page : data.petPages.values()) {
 			for (OwnedPet pet : page) {
-				OwnedPet current = best.get(pet.name);
+				String name = canonical(pet.name); // older saves may still have "Jade Dragon Egg"
+				if (HIDDEN.contains(name)) {
+					continue;
+				}
+				OwnedPet current = best.get(name);
 				if (current == null || pet.rarity > current.rarity || (pet.rarity == current.rarity && pet.level > current.level)) {
-					best.put(pet.name, pet);
+					best.put(name, pet);
 				}
 			}
 		}
 		List<Row> rows = new ArrayList<>();
 		List<String> known = new ArrayList<>();
 		for (CatalogPet pet : catalog()) {
+			if (HIDDEN.contains(pet.name())) {
+				continue;
+			}
 			known.add(pet.name());
 			OwnedPet owned = best.get(pet.name());
 			rows.add(new Row(pet.name(), pet.max(), owned != null ? owned.rarity : -1, owned != null ? owned.level : 0,
