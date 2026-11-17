@@ -41,6 +41,8 @@ public final class DragonMarkers {
 	private static final double PHASE_5_MAX_Y = 45;
 
 	private static String lastState = "not checked yet";
+	private static boolean latched = false;
+	private static net.minecraft.client.multiplayer.ClientLevel lastLevel = null;
 
 	// the camera of the frame that is drawn
 	private static Vec3 cameraPos;
@@ -69,7 +71,7 @@ public final class DragonMarkers {
 			lines.add(String.format("your position: %.0f %.0f %.0f (dragon phase: %s)", client.player.getX(), client.player.getY(),
 					client.player.getZ(), inDragonPhase(client)));
 		}
-		lines.add("dragon markers: " + lastState);
+		lines.add("dragon markers: " + lastState + (latched ? " [kept on]" : ""));
 		return lines;
 	}
 
@@ -85,16 +87,34 @@ public final class DragonMarkers {
 			lastState = "off (setting)";
 			return;
 		}
-		if (!SkyBlockDetector.featuresActive() || !DungeonInfo.inCatacombs()) {
-			lastState = "off (not in a dungeon)";
+		if (client.level == null || client.player == null) {
+			latched = false;
 			return;
 		}
-		if (!DungeonInfo.floor().equals("M7")) {
-			lastState = "off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")";
-			return;
+		if (client.level != lastLevel) {
+			lastLevel = client.level; // a new world: start again
+			latched = false;
 		}
-		if (client.level == null || client.player == null || !inDragonPhase(client)) {
-			lastState = "off (not in the dragon phase of the boss fight)";
+		// Once the dragon phase of M7 has been recognised the circles stay until you leave the boss room. The
+		// sidebar and your height change during the fight, so they are only looked at to start.
+		if (!latched) {
+			if (!SkyBlockDetector.featuresActive() || !DungeonInfo.inCatacombs()) {
+				lastState = "off (not in a dungeon)";
+				return;
+			}
+			if (!DungeonInfo.floor().equals("M7")) {
+				lastState = "off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")";
+				return;
+			}
+			if (!inDragonPhase(client)) {
+				lastState = "off (not in the dragon phase of the boss fight)";
+				return;
+			}
+			latched = true;
+		}
+		if (client.player.getX() <= 0 || client.player.getZ() <= 0) {
+			latched = false; // back in the dungeon rooms
+			lastState = "off (left the boss room)";
 			return;
 		}
 
