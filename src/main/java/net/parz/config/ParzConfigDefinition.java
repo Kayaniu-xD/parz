@@ -72,19 +72,19 @@ public final class ParzConfigDefinition {
 	public static final Toggle DUNGEON_MAP = DUNGEONS.toggle(
 			"dungeons.map",
 			"Dungeon Map",
-			"Shows every room of your dungeon run on the screen. Rooms, doors and their colors are read from the Magic Map in your last hotbar slot. Move and resize it with /parz hud.",
+			"Shows every room of the dungeon on your screen from the start, found by reading the blocks that are already loaded in your game (nothing is sent to the server). The entrance is always at the bottom. Move and resize it with /parz hud.",
 			true);
 
 	public static final Toggle DUNGEON_MAP_NAMES = DUNGEONS.toggle(
 			"dungeons.map_names",
 			"Room Names",
-			"Writes the room type (Entrance, Puzzle, Trap, Fairy, Blood, Mini Boss) on the rooms of the dungeon map.",
+			"Writes the name and the number of secrets on every room. Rooms that are not recognised show their type or a ?.",
 			true);
 
 	public static final Toggle DUNGEON_MAP_STATUS = DUNGEONS.toggle(
 			"dungeons.map_status",
 			"Room Status",
-			"Shows if a room was entered (white frame), is cleared (white check mark), completed (green check mark), failed (red cross) or not explored yet (?).",
+			"Rooms you have not entered are darker. A white check mark = cleared, green = completed, red cross = failed (read from the Magic Map if you carry it).",
 			true);
 
 	public static final Toggle DRAGON_CIRCLES = DUNGEONS.toggle(
