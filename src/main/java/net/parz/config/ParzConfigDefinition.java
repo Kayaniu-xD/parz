@@ -66,6 +66,21 @@ public final class ParzConfigDefinition {
 			"Lowers a collection again when items disappear from your inventory or sacks. Items sold to the Bazaar or an NPC and items used in menus are not subtracted.",
 			true);
 
+	// ---- Dungeons --------------------------------------------------------------------
+	public static final Category DUNGEONS = category("Dungeons", "Dungeon tools for The Catacombs.");
+
+	public static final Toggle DUNGEON_MAP = DUNGEONS.toggle(
+			"dungeons.map",
+			"Dungeon Map",
+			"Shows every room of your dungeon run on the screen. Rooms, doors and their colors are read from the Magic Map in your last hotbar slot. Move and resize it with /parz hud.",
+			true);
+
+	public static final Toggle DRAGON_CIRCLES = DUNGEONS.toggle(
+			"dungeons.dragon_circles",
+			"M7 Dragon Circles",
+			"Master Mode 7: draws a circle on your screen at the neck of every dragon.",
+			true);
+
 	// ---- Update --------------------------------------------------------------------
 	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
 

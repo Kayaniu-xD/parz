@@ -11,6 +11,8 @@ import net.parz.config.ParzConfig;
 import net.parz.dashboard.CollectionTracker;
 import net.parz.dashboard.DashboardData;
 import net.parz.dashboard.DashboardTracker;
+import net.parz.dungeon.DragonMarkers;
+import net.parz.dungeon.DungeonMap;
 import net.parz.gui.DashboardScreen;
 import net.parz.gui.HudEditorScreen;
 import net.parz.hud.HudTrackers;
@@ -47,6 +49,8 @@ public class ParzClient implements ClientModInitializer {
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
+		DungeonMap.register();
+		DragonMarkers.register();
 		ModUpdater.checkOnStartup();
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {

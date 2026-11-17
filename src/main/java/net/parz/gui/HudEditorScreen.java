@@ -25,7 +25,7 @@ public class HudEditorScreen extends Screen {
 	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
 		super.extractRenderState(graphics, mouseX, mouseY, delta);
 		DashboardData data = DashboardData.get();
-		List<String> pinned = data.hudPinned;
+		List<String> pinned = HudTrackers.editorKeys();
 
 		// move the element that is being dragged
 		if (dragging != null) {
@@ -50,7 +50,7 @@ public class HudEditorScreen extends Screen {
 		String title = "Parz HUD Editor";
 		graphics.text(font, title, (this.width - font.width(title)) / 2, this.height / 2 - 30, 0xFFA87BFF, true);
 		String hint = pinned.isEmpty()
-				? "No trackers pinned. Open /parz-dash and click a skill or collection card."
+				? "Nothing to move. Pin a skill or collection in /parz-dash, or turn on the Dungeon Map."
 				: "Drag a tracker to move it, scroll over it to resize it. Press ESC to save.";
 		graphics.text(font, hint, (this.width - font.width(hint)) / 2, this.height / 2 - 16, 0xFFE0E0E0, true);
 
@@ -69,7 +69,7 @@ public class HudEditorScreen extends Screen {
 	/** Mouse wheel over a tracker: bigger / smaller. */
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		List<String> pinned = DashboardData.get().hudPinned;
+		List<String> pinned = HudTrackers.editorKeys();
 		for (int i = pinned.size() - 1; i >= 0; i--) {
 			String key = pinned.get(i);
 			int[] pos = HudTrackers.position(key, i, this.width, this.height);
@@ -103,7 +103,7 @@ public class HudEditorScreen extends Screen {
 			return true;
 		}
 
-		List<String> pinned = DashboardData.get().hudPinned;
+		List<String> pinned = HudTrackers.editorKeys();
 		// topmost (last drawn) first
 		for (int i = pinned.size() - 1; i >= 0; i--) {
 			String key = pinned.get(i);

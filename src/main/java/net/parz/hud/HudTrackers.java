@@ -9,6 +9,7 @@ import net.minecraft.resources.Identifier;
 import net.parz.config.ParzConfigDefinition;
 import net.parz.dashboard.DashboardData;
 import net.parz.dashboard.DashboardTracker;
+import net.parz.dungeon.DungeonMap;
 import net.parz.gui.HudEditorScreen;
 import net.parz.skyblock.SkyBlockDetector;
 
@@ -19,6 +20,7 @@ import java.util.Locale;
  * Draws the trackers you pinned in /parz-dash on the HUD.
  */
 public final class HudTrackers {
+	public static final String MAP_KEY = "dungeon_map";
 	public static final int WIDTH = 150;
 	public static final int HEIGHT = 41;
 	public static final float MIN_SCALE = 0.5f;
@@ -65,11 +67,20 @@ public final class HudTrackers {
 	}
 
 	public static int scaledWidth(String key) {
-		return Math.round(WIDTH * scale(key));
+		return Math.round((MAP_KEY.equals(key) ? DungeonMap.WIDTH : WIDTH) * scale(key));
 	}
 
 	public static int scaledHeight(String key) {
-		return Math.round(HEIGHT * scale(key));
+		return Math.round((MAP_KEY.equals(key) ? DungeonMap.HEIGHT : HEIGHT) * scale(key));
+	}
+
+	/** Everything the HUD editor can move: the pinned trackers and the dungeon map. */
+	public static List<String> editorKeys() {
+		List<String> keys = new java.util.ArrayList<>(DashboardData.get().hudPinned);
+		if (ParzConfigDefinition.DUNGEON_MAP.isEnabled()) {
+			keys.add(MAP_KEY);
+		}
+		return keys;
 	}
 
 	/** Position of a tracker (default: stacked in the top-left corner), clamped to the screen. */
@@ -82,6 +93,10 @@ public final class HudTrackers {
 		}
 		int x = pos != null ? pos[0] : 4;
 		int y = pos != null ? pos[1] : defaultY;
+		if (MAP_KEY.equals(key) && pos == null) {
+			x = screenW - scaledWidth(key) - 4; // the dungeon map starts in the top right corner
+			y = 4;
+		}
 		x = Math.max(0, Math.min(screenW - scaledWidth(key), x));
 		y = Math.max(0, Math.min(screenH - scaledHeight(key), y));
 		return new int[]{x, y};
@@ -93,7 +108,11 @@ public final class HudTrackers {
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(x, y);
 		graphics.pose().scale(scale, scale);
-		drawUnscaled(graphics, font, key, 0, 0);
+		if (MAP_KEY.equals(key)) {
+			DungeonMap.drawUnscaled(graphics, font, 0, 0, true);
+		} else {
+			drawUnscaled(graphics, font, key, 0, 0);
+		}
 		graphics.pose().popMatrix();
 	}
 
