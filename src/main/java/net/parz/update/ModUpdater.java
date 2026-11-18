@@ -178,7 +178,7 @@ public final class ModUpdater {
 						+ currentVersion() + "). ")
 				.append(Component.literal("[Click to update]").withStyle(style -> style
 						.withColor(ChatFormatting.GREEN)
-						.withClickEvent(new ClickEvent.RunCommand("parz update"))));
+						.withClickEvent(new ClickEvent.RunCommand("pz update"))));
 		client.player.sendSystemMessage(text);
 	}
 
