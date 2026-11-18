@@ -335,8 +335,12 @@ public final class PetsView {
 				features.add(btn);
 			}
 		}
-		for (Btn btn : navSorted) {
-			if (btn != null) {
+		// "Previous Page" and "Next Page" always keep their own cell (an empty one if the page does not exist),
+		// so "Next Page" never jumps to another spot
+		boolean pageButtons = navSorted.get(0) != null || navSorted.get(1) != null;
+		for (int i = 0; i < navSorted.size(); i++) {
+			Btn btn = navSorted.get(i);
+			if (btn != null || (pageButtons && i < 2)) {
 				navigation.add(btn);
 			}
 		}
@@ -349,7 +353,9 @@ public final class PetsView {
 		int widest = 0;
 		for (List<Btn> group : groups) {
 			for (Btn btn : group) {
-				widest = Math.max(widest, font.width(btn.label()));
+				if (btn != null) {
+					widest = Math.max(widest, font.width(btn.label()));
+				}
 			}
 		}
 		int gap = 4;
@@ -399,6 +405,9 @@ public final class PetsView {
 			int step = h + 2;
 			for (int i = 0; i < group.size(); i++) {
 				Btn btn = group.get(i);
+				if (btn == null) {
+					continue; // an empty cell keeps the place of a missing page button
+				}
 				int cx = x1 + (i % cols) * (cellW + gap);
 				int cy = ry + (i / cols) * step;
 				String label = btn.label();
