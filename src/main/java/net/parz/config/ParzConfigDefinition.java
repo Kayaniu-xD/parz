@@ -93,6 +93,15 @@ public final class ParzConfigDefinition {
 			"Only in the Master Mode 7 boss fight (dragon phase): a circle on the neck of each of the 5 dragons. The circles are fixed in the world and stay, also before a dragon spawns.",
 			true);
 
+	// ---- Crystal Hollows -----------------------------------------------------------------
+	public static final Category HOLLOWS = category("Crystal Hollows", "Tools for the Crystal Hollows.");
+
+	public static final Toggle NUCLEUS_SLOT = HOLLOWS.toggle(
+			"hollows.nucleus_slot",
+			"Nucleus Slot Machine",
+			"When you place all crystals and get the loot bundle of the Crystal Nucleus, a slot machine spins on your screen and stops on the rarest item you got. With a Divan's Alloy all three reels show the alloy: jackpot. Try it with /pz nucleus.",
+			true);
+
 	// ---- Update --------------------------------------------------------------------
 	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
 

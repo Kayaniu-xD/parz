@@ -49,6 +49,7 @@ public class ParzClient implements ClientModInitializer {
 				DashboardData.ensureAccount(client.getUser().getName()));
 		SkyBlockDetector.register();
 		Debug.register();
+		net.parz.hollows.NucleusSlot.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
@@ -78,6 +79,15 @@ public class ParzClient implements ClientModInitializer {
 							.executes(context -> debugCommand(context.getSource(), null))
 							.then(ClientCommands.literal("on").executes(context -> debugCommand(context.getSource(), true)))
 							.then(ClientCommands.literal("off").executes(context -> debugCommand(context.getSource(), false))))
+					.then(ClientCommands.literal("nucleus")
+							.executes(context -> {
+								net.parz.hollows.NucleusSlot.test(false);
+								return 1;
+							})
+							.then(ClientCommands.literal("alloy").executes(context -> {
+								net.parz.hollows.NucleusSlot.test(true);
+								return 1;
+							})))
 					.then(ClientCommands.literal("help").executes(context -> {
 							sendHelp(context.getSource());
 							return 1;
@@ -116,6 +126,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz dash", "Opens the dashboard with your skills, collections and playtime"},
 			{"pz hud", "Move and resize the HUD elements (trackers, dungeon map)"},
 			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
+			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
