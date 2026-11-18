@@ -39,6 +39,7 @@ Parz updates itself from the GitHub releases.
 | `/pz dash` | Opens the dashboard (skills, collections, playtime) |
 | `/pz hud` | Opens the HUD editor to move and resize the HUD elements |
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
+| `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -100,6 +101,12 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 - **M7 Dragon Circles**: in the dragon phase of the Master Mode 7 boss fight, a circle is drawn on the neck of each
   of the five dragons. The circles are fixed in the world and stay for the rest of the fight. If they disappear
   anyway, the chat says why.
+
+### Crystal Hollows
+- **Nucleus Slot Machine**: when you place all crystals and the loot bundle of the Crystal Nucleus appears in the
+  chat, a slot machine with three reels spins on your screen and stops on the rarest item you got (rated with the loot
+  table of the SkyBlock wiki). If you got a Divan's Alloy, all three reels stop on the alloy, like three sevens.
+  Try it with `/pz nucleus` or `/pz nucleus alloy`.
 
 ### Other
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
