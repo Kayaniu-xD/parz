@@ -73,6 +73,10 @@ public class ParzClient implements ClientModInitializer {
 							}
 							return 1;
 						}))
+						.then(ClientCommands.literal("help").executes(context -> {
+							sendHelp(context.getSource());
+							return 1;
+						}))
 						.then(ClientCommands.literal("dash").executes(context -> {
 							screenToOpen = DashboardScreen::new;
 							return 1;
@@ -99,6 +103,33 @@ public class ParzClient implements ClientModInitializer {
 		Runtime.getRuntime().addShutdownHook(new Thread(ParzClient::saveAll, "parz-save"));
 
 		LOGGER.info("Parz loaded - use /pz, /pz hud, /pz update and /pz dash");
+	}
+
+	/** Every command with a short description; the command is clickable and runs when you click it. */
+	private static final String[][] COMMANDS = {
+			{"pz", "Opens the settings menu"},
+			{"pz dash", "Opens the dashboard with your skills, collections and playtime"},
+			{"pz hud", "Move and resize the HUD elements (trackers, dungeon map)"},
+			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
+			{"pz update", "Installs the newest Parz version from GitHub"},
+			{"pz help", "Shows this list"}
+	};
+
+	private static void sendHelp(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source) {
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Commands (click one to run it):")
+				.withStyle(net.minecraft.ChatFormatting.GOLD));
+		for (String[] entry : COMMANDS) {
+			String command = entry[0];
+			net.minecraft.network.chat.Component line = net.minecraft.network.chat.Component.literal("/" + command)
+					.withStyle(style -> style
+							.withColor(net.minecraft.ChatFormatting.AQUA)
+							.withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+							.withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(
+									net.minecraft.network.chat.Component.literal("Click to run /" + command))))
+					.append(net.minecraft.network.chat.Component.literal("  -  " + entry[1])
+							.withStyle(net.minecraft.ChatFormatting.GRAY));
+			source.sendFeedback(line);
+		}
 	}
 
 	/** Writes the settings and the dashboard data (skills, collections, playtime, HUD) to disk. */
