@@ -185,8 +185,10 @@ public final class PetsView {
 		for (Entry entry : entries(container)) {
 			(entry.pet() ? pets : controls).add(entry);
 		}
-		// favourite pets (with a star) are at the top of the pet list, the other pets keep the menu order
-		pets.sort(java.util.Comparator.comparing((Entry entry) -> !entry.favorite()));
+		// the equipped pet is always at the top of the page, then the favourite pets (with a star);
+		// the other pets keep the menu order
+		pets.sort(java.util.Comparator.comparing((Entry entry) -> !isActive(entry.stack()))
+				.thenComparing(entry -> !entry.favorite()));
 		observePets(container, pets);
 
 		// new menu page: forget the selection
