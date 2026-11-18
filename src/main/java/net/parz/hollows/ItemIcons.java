@@ -15,6 +15,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -84,14 +85,36 @@ public final class ItemIcons {
 		return DIR.resolve(key(name).replaceAll("[^a-z0-9]+", "_") + ".png");
 	}
 
+	/** Items whose picture has another name on the wiki than the item itself. */
+	private static final Map<String, String> ALIASES = Map.of(
+			"enchanted coal block", "Enchanted Block of Coal");
+
 	private static boolean fetch(String name) throws Exception {
 		Path target = file(name);
 		if (Files.exists(target)) {
 			return true;
 		}
-		String base = name.trim().replace(' ', '_');
+		java.util.List<String> names = new java.util.ArrayList<>();
+		names.add(name.trim());
+		String alias = ALIASES.get(key(name));
+		if (alias != null) {
+			names.add(alias);
+		}
+		for (String candidate : names) {
+			if (save(target, candidate, name)) {
+				return true;
+			}
+		}
+		// not found by its name: ask the search of the wiki for a picture with this name
+		String found = search(name.trim());
+		return found != null && save(target, found, name);
+	}
+
+	/** Downloads "<base>.png" or "<base>.gif" from the wiki and saves it (small, as png). */
+	private static boolean save(Path target, String base, String name) throws Exception {
+		String fileBase = base.replace(' ', '_');
 		for (String extension : new String[]{".png", ".gif"}) {
-			byte[] data = download(base + extension);
+			byte[] data = download(fileBase + extension);
 			if (data == null) {
 				continue;
 			}
@@ -107,10 +130,39 @@ public final class ItemIcons {
 			ImageIO.write(small, "png", out);
 			Files.createDirectories(DIR);
 			Files.write(target, out.toByteArray());
-			Debug.log("nucleus", () -> "wiki picture saved: " + name);
+			Debug.log("nucleus", () -> "wiki picture saved: " + name + " (" + fileBase + extension + ")");
 			return true;
 		}
 		return false;
+	}
+
+	/** The file name (without ".png") of a picture of the wiki that is called like the item, or null. */
+	private static String search(String name) throws Exception {
+		if (http == null) {
+			http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).followRedirects(HttpClient.Redirect.NORMAL).build();
+		}
+		URI uri = new URI("https", HOST, "/api.php", "action=query&list=search&srnamespace=6&format=json&srlimit=5&srsearch="
+				+ java.net.URLEncoder.encode(name, StandardCharsets.UTF_8), null);
+		HttpResponse<String> response = http.send(HttpRequest.newBuilder(uri)
+						.header("User-Agent", "ParzMod (Minecraft client mod, item pictures)")
+						.timeout(Duration.ofSeconds(20)).GET().build(),
+				HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		if (response.statusCode() != 200) {
+			return null;
+		}
+		var hits = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject()
+				.getAsJsonObject("query").getAsJsonArray("search");
+		String wanted = key(name);
+		for (var hit : hits) {
+			String title = hit.getAsJsonObject().get("title").getAsString(); // "File:Name.png"
+			String bare = title.substring(title.indexOf(':') + 1);
+			int dot = bare.lastIndexOf('.');
+			String withoutExtension = dot > 0 ? bare.substring(0, dot) : bare;
+			if (key(withoutExtension).equals(wanted)) {
+				return withoutExtension;
+			}
+		}
+		return null;
 	}
 
 	private static byte[] download(String fileName) throws Exception {
