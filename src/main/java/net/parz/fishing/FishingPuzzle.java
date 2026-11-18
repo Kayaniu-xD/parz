@@ -308,6 +308,9 @@ public final class FishingPuzzle {
 		float scale = (float) Math.min(1.6, Math.min(screenH * 0.8 / panelH, screenW * 0.9 / panelW));
 		int x = (screenW - panelW) / 2;
 		int y = (int) Math.round((screenH - panelH) / 2.0 - (1.0 - slide) * ((screenH + panelH * scale) / 2.0 + 10));
+		// the rest of the screen gets darker while the memory is shown (fades in and out with the board)
+		int dim = (int) Math.round(0xB0 * Math.max(0, Math.min(1, slide)));
+		graphics.fill(0, 0, screenW, screenH, dim << 24);
 		graphics.pose().pushMatrix();
 		graphics.pose().translate(x + panelW / 2f, y + panelH / 2f);
 		graphics.pose().scale(scale, scale);
