@@ -48,6 +48,8 @@ public final class CollectionTracker {
 	private static final Pattern DUNGEON_DONE = Pattern.compile("(Master(?: Mode)? )?(?:The Catacombs )?Floor ([IVX]+|\\d) [Cc]omplet(?:ion|ed)");
 	/** Lines of the summary that only appear when the boss was defeated. */
 	private static final Pattern DUNGEON_CONFIRM = Pattern.compile("^(?:Defeated .+ in \\d|Team Score:)");
+	/** "Defeated Maxor, Storm, Goldor, and Necron in 06m 06s" (only a defeated boss gets this line). */
+	private static final Pattern DUNGEON_DEFEATED = Pattern.compile("^Defeated .+ in \\d+m? ?\\d*");
 	private static final long DUNGEON_CONFIRM_MS = 10_000L;
 	private static final long DUNGEON_COOLDOWN_MS = 60_000L;
 
@@ -288,7 +290,37 @@ public final class CollectionTracker {
 			net.parz.Debug.log("dungeon", () -> "confirmation line recognised: " + text);
 			completeFloor(pendingFloor, pendingMaster);
 			pendingFloor = 0;
+			return;
 		}
+		// No header was seen (the wording of the summary changes): "Defeated <boss> in <time>" alone is enough.
+		// The floor and mode come from the sidebar ("The Catacombs (M7)"), or from the name of the boss.
+		if (DUNGEON_DEFEATED.matcher(text).find()) {
+			int floor = 0;
+			boolean master = false;
+			String sidebar = net.parz.dungeon.DungeonInfo.floor();
+			if (sidebar.matches("[FM]\\d")) {
+				floor = parseFloor(sidebar.substring(1));
+				master = sidebar.startsWith("M");
+			} else {
+				floor = bossFloor(text);
+			}
+			final int shownFloor = floor;
+			final boolean shownMaster = master;
+			net.parz.Debug.log("dungeon", () -> "boss line recognised without a header: " + text + " -> floor " + shownFloor
+					+ (shownMaster ? " (Master Mode)" : "") + (sidebar.isEmpty() ? " [floor from the boss name]" : " [floor from the sidebar " + sidebar + "]"));
+			completeFloor(floor, master);
+		}
+	}
+
+	/** Floor of the boss named in "Defeated Maxor, Storm, Goldor, and Necron in ...", 0 if it is none of them. */
+	private static int bossFloor(String text) {
+		String lower = text.toLowerCase(Locale.ROOT);
+		for (int i = DashboardData.FLOOR_BOSSES.size() - 1; i >= 0; i--) {
+			if (lower.contains(DashboardData.FLOOR_BOSSES.get(i).toLowerCase(Locale.ROOT))) {
+				return i + 1;
+			}
+		}
+		return 0;
 	}
 
 	private static int parseFloor(String text) {
