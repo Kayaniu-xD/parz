@@ -104,7 +104,7 @@ public final class CollectionTracker {
 	}
 
 	public static void register() {
-		ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+		ClientReceiveMessageEvents.GAME.register(net.parz.Debug.message("collections chat", (message, overlay) -> {
 			if (overlay || !enabled()) {
 				return;
 			}
@@ -114,8 +114,8 @@ public final class CollectionTracker {
 			if (text.startsWith("[Sacks]")) {
 				onSackMessage(message, text);
 			}
-		});
-		ClientTickEvents.END_CLIENT_TICK.register(CollectionTracker::onTick);
+		}));
+		ClientTickEvents.END_CLIENT_TICK.register(net.parz.Debug.tick("collections tick", CollectionTracker::onTick));
 	}
 
 	private static boolean enabled() {

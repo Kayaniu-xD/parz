@@ -128,7 +128,7 @@ public final class DungeonMap {
 		});
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 				Identifier.fromNamespaceAndPath("parz", "dungeon_map"),
-				(graphics, deltaTracker) -> renderHud(graphics));
+				net.parz.Debug.hud("dungeon map", (graphics, deltaTracker) -> renderHud(graphics)));
 	}
 
 	/** True while you are in a Catacombs run. */

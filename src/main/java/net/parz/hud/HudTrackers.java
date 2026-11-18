@@ -33,7 +33,7 @@ public final class HudTrackers {
 	public static void register() {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 				Identifier.fromNamespaceAndPath("parz", "trackers"),
-				(graphics, deltaTracker) -> render(graphics));
+				net.parz.Debug.hud("hud trackers", (graphics, deltaTracker) -> render(graphics)));
 	}
 
 	private static void render(GuiGraphicsExtractor graphics) {

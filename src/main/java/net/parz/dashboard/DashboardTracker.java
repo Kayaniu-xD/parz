@@ -69,13 +69,13 @@ public final class DashboardTracker {
 	}
 
 	public static void register() {
-		ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+		ClientReceiveMessageEvents.GAME.register(net.parz.Debug.message("dashboard chat", (message, overlay) -> {
 			if (overlay && SkyBlockDetector.featuresActive()) {
 				onActionBar(clean(message.getString()));
 			}
-		});
+		}));
 
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+		ClientTickEvents.END_CLIENT_TICK.register(net.parz.Debug.tick("dashboard tick", client -> {
 			tickCounter++;
 			countPlaytime(client);
 			// changes are written to disk shortly after they happen (also if SkyBlock
@@ -93,7 +93,7 @@ public final class DashboardTracker {
 			if (tickCounter % 20 == 0) {
 				readTabList(client);
 			}
-		});
+		}));
 	}
 
 	/** Adds the time spent in a world to the playtime that is saved in config/parz-dashboard.json. */

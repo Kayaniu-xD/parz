@@ -22,7 +22,7 @@ public final class SkyBlockDetector {
 	}
 
 	public static void register() {
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+		ClientTickEvents.END_CLIENT_TICK.register(net.parz.Debug.tick("SkyBlock detection", client -> {
 			if (++tickCounter % 20 == 0) {
 				boolean now = detect(client);
 				if (now != onSkyBlock) {
@@ -30,7 +30,7 @@ public final class SkyBlockDetector {
 				}
 				onSkyBlock = now;
 			}
-		});
+		}));
 	}
 
 	/** True if you are on Hypixel SkyBlock right now. */

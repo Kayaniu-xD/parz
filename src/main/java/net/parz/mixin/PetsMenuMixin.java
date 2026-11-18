@@ -28,7 +28,7 @@ public abstract class PetsMenuMixin {
 		if (PetsView.applies(screen)) {
 			// no slot is hovered in the book: keys like 1-9 or Q must not act on a slot behind it
 			this.hoveredSlot = null;
-			PetsView.render(screen, graphics, mouseX, mouseY);
+			net.parz.Debug.guard("pets menu", () -> PetsView.render(screen, graphics, mouseX, mouseY));
 			ci.cancel();
 		}
 	}

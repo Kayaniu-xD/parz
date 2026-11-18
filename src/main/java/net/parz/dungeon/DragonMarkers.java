@@ -61,7 +61,7 @@ public final class DragonMarkers {
 	public static void register() {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 				Identifier.fromNamespaceAndPath("parz", "dragon_markers"),
-				DragonMarkers::render);
+				net.parz.Debug.hud("dragon circles", DragonMarkers::render));
 	}
 
 	/** Lines for /pz dungeon. */

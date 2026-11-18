@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 
 public class ParzClient implements ClientModInitializer {
 	public static final String MOD_ID = "parz";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	public static final Logger LOGGER = Debug.wrap(LoggerFactory.getLogger(MOD_ID));
 
 	/**
 	 * The chat screen closes itself right after a command was sent, so screens are
@@ -92,14 +92,14 @@ public class ParzClient implements ClientModInitializer {
 						})));
 		});
 
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+		ClientTickEvents.END_CLIENT_TICK.register(Debug.tick("main tick", client -> {
 			ModUpdater.tick(client);
 			if (screenToOpen != null) {
 				Screen screen = screenToOpen.get();
 				screenToOpen = null;
 				client.gui.setScreen(screen);
 			}
-		});
+		}));
 
 		// everything (settings, skills, collections, HUD) is written when the game closes
 		// or when you leave a server; the shutdown hook covers the cases the events miss
