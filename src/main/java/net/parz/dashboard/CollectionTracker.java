@@ -112,7 +112,14 @@ public final class CollectionTracker {
 			}
 			String text = clean(message.getString()).trim();
 			detectTrade(text);
-			detectDungeon(text);
+			// the end-of-run summary of a dungeon is ONE chat message with many lines ("-----", "Master Mode - M7",
+			// "Defeated ... in ...", ...): every line is checked on its own
+			for (String line : text.split("\\R")) {
+				String trimmed = line.trim();
+				if (!trimmed.isEmpty()) {
+					detectDungeon(trimmed);
+				}
+			}
 			if (text.startsWith("[Sacks]")) {
 				onSackMessage(message, text);
 			}
