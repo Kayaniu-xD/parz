@@ -50,6 +50,7 @@ public class ParzClient implements ClientModInitializer {
 		SkyBlockDetector.register();
 		Debug.register();
 		net.parz.hollows.NucleusSlot.register();
+		net.parz.fishing.FishingPuzzle.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
@@ -86,6 +87,23 @@ public class ParzClient implements ClientModInitializer {
 							})
 							.then(ClientCommands.literal("alloy").executes(context -> {
 								net.parz.hollows.NucleusSlot.test(true);
+								return 1;
+							})))
+					.then(ClientCommands.literal("fishing")
+							.executes(context -> {
+								net.parz.fishing.FishingPuzzle.test("");
+								return 1;
+							})
+							.then(ClientCommands.literal("jawbus").executes(context -> {
+								net.parz.fishing.FishingPuzzle.test("jawbus");
+								return 1;
+							}))
+							.then(ClientCommands.literal("thunder").executes(context -> {
+								net.parz.fishing.FishingPuzzle.test("thunder");
+								return 1;
+							}))
+							.then(ClientCommands.literal("ragnarok").executes(context -> {
+								net.parz.fishing.FishingPuzzle.test("ragnarok");
 								return 1;
 							})))
 					.then(ClientCommands.literal("help").executes(context -> {
@@ -127,6 +145,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz hud", "Move and resize the HUD elements (trackers, dungeon map)"},
 			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
+			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
