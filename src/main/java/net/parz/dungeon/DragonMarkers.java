@@ -12,7 +12,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import net.parz.config.ParzConfigDefinition;
 import net.parz.skyblock.SkyBlockDetector;
+import org.joml.Matrix4f;
 import org.joml.Vector3fc;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,11 +49,10 @@ public final class DragonMarkers {
 
 	// the camera of the frame that is drawn
 	private static Vec3 cameraPos;
-	private static Vector3fc forward;
-	private static Vector3fc left;
 	private static Vector3fc up;
-	private static double tan;
-	private static double aspect;
+	/** The matrix the game itself draws the world with (the way you look and the real field of view). */
+	private static final Matrix4f VIEW_PROJECTION = new Matrix4f();
+	private static final Vector4f CLIP = new Vector4f();
 	private static int screenW;
 	private static int screenH;
 
@@ -71,6 +72,11 @@ public final class DragonMarkers {
 		if (client.player != null) {
 			lines.add(String.format("your position: %.0f %.0f %.0f (dragon phase: %s)", client.player.getX(), client.player.getY(),
 					client.player.getZ(), inDragonPhase(client)));
+		}
+		if (client.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit
+				&& hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+			BlockPos pos = hit.getBlockPos();
+			lines.add("you look at the block " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
 		}
 		lines.add("dragon markers: " + lastState + (latched ? " [kept on]" : ""));
 		return lines;
@@ -151,61 +157,52 @@ public final class DragonMarkers {
 
 		Camera camera = client.gameRenderer.mainCamera();
 		cameraPos = camera.position();
-		// the directions the camera looks / goes left / goes up, already in world coordinates
-		forward = camera.forwardVector();
-		left = camera.leftVector();
 		up = camera.upVector();
-		float fov = camera.getFov();
-		if (fov <= 0.01f) {
-			fov = client.options.fov().get();
-		} else if (fov < 3.2f) {
-			fov = (float) Math.toDegrees(fov); // radians
-		}
-		tan = Math.tan(Math.toRadians(fov) / 2.0);
+		// the projection of the game itself: also right for points far from the middle of the screen, and with
+		// every field of view change (sprinting, speed, the FOV setting)
+		camera.getViewRotationProjectionMatrix(VIEW_PROJECTION);
 		screenW = client.getWindow().getGuiScaledWidth();
 		screenH = client.getWindow().getGuiScaledHeight();
-		aspect = screenW / (double) screenH;
 
 		Font font = client.font;
 		for (Dragon dragon : DRAGONS) {
 			drawNeckRing(graphics, font, dragon);
 		}
-		setState("showing the 5 circles (fov " + Math.round(fov) + ")");
+		setState("showing the 5 circles");
 	}
 
 	// ---- projection ----
 
-	/** A point of the world in camera space: {side (left), height (up), depth (forward)}. */
-	private static double[] toCamera(double x, double y, double z) {
-		double dx = x - cameraPos.x;
-		double dy = y - cameraPos.y;
-		double dz = z - cameraPos.z;
-		return new double[]{
-				dx * left.x() + dy * left.y() + dz * left.z(),
-				dx * up.x() + dy * up.y() + dz * up.z(),
-				dx * forward.x() + dy * forward.y() + dz * forward.z()
-		};
-	}
-
-	private static double screenX(double[] c) {
-		return (0.5 - c[0] / c[2] / (tan * aspect) * 0.5) * screenW;
-	}
-
-	private static double screenY(double[] c) {
-		return (0.5 - c[1] / c[2] / tan * 0.5) * screenH;
+	/** A point of the world on the screen: {x, y, distance}, or null if it is behind you. */
+	private static double[] project(double x, double y, double z) {
+		CLIP.set((float) (x - cameraPos.x), (float) (y - cameraPos.y), (float) (z - cameraPos.z), 1f);
+		VIEW_PROJECTION.transform(CLIP);
+		if (CLIP.w <= 0.05f) {
+			return null;
+		}
+		double ndcX = CLIP.x / CLIP.w;
+		double ndcY = CLIP.y / CLIP.w;
+		double distance = Math.sqrt((x - cameraPos.x) * (x - cameraPos.x) + (y - cameraPos.y) * (y - cameraPos.y)
+				+ (z - cameraPos.z) * (z - cameraPos.z));
+		return new double[]{(ndcX * 0.5 + 0.5) * screenW, (0.5 - ndcY * 0.5) * screenH, distance};
 	}
 
 	// ---- drawing ----
 
 	/** A circle around the neck (the chin block) of the dragon statue. */
 	private static void drawNeckRing(GuiGraphicsExtractor graphics, Font font, Dragon dragon) {
-		double[] c = toCamera(dragon.chin().getX() + 0.5, dragon.chin().getY() + 0.5, dragon.chin().getZ() + 0.5);
-		if (c[2] < 0.5) {
+		double x = dragon.chin().getX() + 0.5;
+		double y = dragon.chin().getY() + 0.5;
+		double z = dragon.chin().getZ() + 0.5;
+		double[] centre = project(x, y, z);
+		if (centre == null) {
 			return;
 		}
-		int cx = (int) Math.round(screenX(c));
-		int cy = (int) Math.round(screenY(c));
-		double radius = RING_RADIUS_BLOCKS / c[2] / tan * 0.5 * screenH;
+		// the size of the ring: how far a point RING_RADIUS_BLOCKS above the middle is on the screen
+		double[] above = project(x + up.x() * RING_RADIUS_BLOCKS, y + up.y() * RING_RADIUS_BLOCKS, z + up.z() * RING_RADIUS_BLOCKS);
+		int cx = (int) Math.round(centre[0]);
+		int cy = (int) Math.round(centre[1]);
+		double radius = above == null ? 7 : Math.hypot(above[0] - centre[0], above[1] - centre[1]);
 		radius = Math.max(7, Math.min(120, radius));
 		int steps = (int) Math.max(24, Math.min(90, Math.round(radius * 1.6)));
 		for (int i = 0; i < steps; i++) {
