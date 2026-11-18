@@ -106,9 +106,6 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 
 ## Credits and licenses
 
-- Room data for the dungeon map comes from [IllegalMap](https://github.com/UnclaimedBloom6/IllegalMap) by UnclaimedBloom6 (MIT) and
-  [Odin](https://github.com/odtheking/Odin) (BSD 3-Clause). Their license texts are next to the data files in
-  `src/main/resources/assets/parz/`.
 - The list of pets comes from the [Hypixel SkyBlock wiki](https://hypixel-skyblock.fandom.com/).
 - Parz is not affiliated with Hypixel or Mojang.
 
