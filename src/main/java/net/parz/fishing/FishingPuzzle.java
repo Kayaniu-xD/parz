@@ -77,8 +77,8 @@ public final class FishingPuzzle {
 
 	private static final Pattern FORMATTING = Pattern.compile("§.");
 	private static final long ACTIVE_MS = 8 * 60_000L;
-	private static final long DEATH_GRACE_MS = 1500;
-	private static final long DROP_WINDOW_MS = 4500;
+	private static final long DEATH_GRACE_MS = 500;
+	private static final long DROP_WINDOW_MS = 3000;
 	/** A creature that vanishes farther away than this was not killed by you (it was unloaded). */
 	private static final double MAX_KILL_DISTANCE = 48;
 
@@ -193,7 +193,7 @@ public final class FishingPuzzle {
 		}
 		// the name tag of a creature: while it is there it lives. This also finds a creature whose spawn message
 		// was not seen (somebody else fished it up, you joined late, ...).
-		if (++scanTick >= 5) {
+		if (++scanTick >= (active != null ? 1 : 5)) {
 			scanTick = 0;
 			Creature seen = null;
 			double distance = 0;
