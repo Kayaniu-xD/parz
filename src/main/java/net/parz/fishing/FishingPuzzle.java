@@ -81,7 +81,6 @@ public final class FishingPuzzle {
 	private static final long DROP_WINDOW_MS = 4500;
 	/** A creature that vanishes farther away than this was not killed by you (it was unloaded). */
 	private static final double MAX_KILL_DISTANCE = 48;
-	private static final Pattern TAG = Pattern.compile("lv\\d+\\]");
 
 	// ---- what is going on while you fish ----
 	private static Creature active = null;
@@ -199,15 +198,18 @@ public final class FishingPuzzle {
 			Creature seen = null;
 			double distance = 0;
 			for (Entity entity : client.level.entitiesForRendering()) {
-				if (entity.hasCustomName() && entity.getCustomName() != null) {
-					String name = FORMATTING.matcher(entity.getCustomName().getString()).replaceAll("").toLowerCase(Locale.ROOT);
-					Creature creature = creatureOfTag(name);
-					if (creature != null && (active == null || creature == active)) {
-						double d = entity.distanceTo(client.player);
-						if (seen == null || d < distance) {
-							seen = creature;
-							distance = d;
-						}
+				if (entity instanceof net.minecraft.world.entity.item.ItemEntity || entity instanceof net.minecraft.world.entity.player.Player) {
+					continue;
+				}
+				// the name tag, or the name of the mob itself
+				Component component = entity.hasCustomName() && entity.getCustomName() != null ? entity.getCustomName() : entity.getName();
+				String name = FORMATTING.matcher(component.getString()).replaceAll("").toLowerCase(Locale.ROOT);
+				Creature creature = creatureOfTag(name);
+				if (creature != null && (active == null || creature == active)) {
+					double d = entity.distanceTo(client.player);
+					if (seen == null || d < distance) {
+						seen = creature;
+						distance = d;
 					}
 				}
 			}
@@ -271,11 +273,24 @@ public final class FishingPuzzle {
 		inventory = null;
 	}
 
-	/** The creature of a name tag like "[Lv597] Lord Jawbus 600M/600M" (lower case, colors removed), or null. */
+	/** Part of a name tag that only a living mob has: its level "[Lv597]", its health "419M/600M" or the heart. */
+	private static final Pattern MOB_TAG = Pattern.compile("lv\\s*\\d+|\\d[kmb]?\\s*/\\s*\\d|❤");
+	private static final Set<String> LOGGED_NAMES = new HashSet<>();
+
+	/**
+	 * The creature of a name tag (lower case, colors removed), or null. The tag does not always look the same
+	 * ("[Lv597] [symbols] Lord Jawbus 419M/600M [heart]"), so only the name has to be in it, together with
+	 * something that shows it is a living mob (the level, the health or the heart).
+	 */
 	private static Creature creatureOfTag(String name) {
 		for (Creature creature : CREATURES) {
-			if (TAG.matcher(name).find() && name.matches(".*lv\\d+\\]\\s*" + Pattern.quote(creature.tag()) + ".*")) {
-				return creature;
+			if (name.contains(creature.tag())) {
+				if (MOB_TAG.matcher(name).find()) {
+					return creature;
+				}
+				if (LOGGED_NAMES.add(name)) {
+					Debug.log("fishing", () -> "a name with \"" + creature.tag() + "\" that does not look like a mob: \"" + name + "\"");
+				}
 			}
 		}
 		return null;
