@@ -104,14 +104,6 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.
 
-## Building from source
-
-```
-./gradlew build
-```
-
-Needs JDK 25. The build produces a jar for each supported Minecraft version in `releases/`.
-
 ## Credits and licenses
 
 - Room data for the dungeon map comes from [IllegalMap](https://github.com/UnclaimedBloom6/IllegalMap) by UnclaimedBloom6 (MIT) and
