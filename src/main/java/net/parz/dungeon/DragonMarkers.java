@@ -295,15 +295,23 @@ public final class DragonMarkers {
 		if (!Minecraft.getInstance().isSameThread() || !ParzConfigDefinition.DRAGON_CIRCLES.isEnabled()) {
 			return;
 		}
-		if (packet.getParticle().getType() != net.minecraft.core.particles.ParticleTypes.FLAME) return;
-		if (packet.getX() % 1 != 0.0 || packet.getZ() % 1 != 0.0) return;
-		if (packet.getCount() != 20 || packet.getY() != 19.0) return;
-		if (packet.getMaxSpeed() != 0f || !packet.isOverrideLimiter()) return;
-		if (packet.getXDist() != 2f || packet.getYDist() != 3f || packet.getZDist() != 2f) return;
+		// the packet has other method names in Minecraft 26.2 (getX) and 26.3 (x, a record), so it is read by name
+		Object particle = read(packet, "getParticle", "particle");
+		if (!(particle instanceof net.minecraft.core.particles.ParticleOptions options)
+				|| options.getType() != net.minecraft.core.particles.ParticleTypes.FLAME) return;
+		double x = number(packet, "getX", "x");
+		double y = number(packet, "getY", "y");
+		double z = number(packet, "getZ", "z");
+		if (x % 1 != 0.0 || z % 1 != 0.0) return;
+		if (number(packet, "getCount", "count") != 20 || y != 19.0) return;
+		if (number(packet, "getMaxSpeed", "xMaxSpeed") != 0 || number(packet, "yMaxSpeed", "getMaxSpeed") != 0
+				|| number(packet, "zMaxSpeed", "getMaxSpeed") != 0) return;
+		if (!Boolean.TRUE.equals(read(packet, "isOverrideLimiter", "overrideLimiter"))) return;
+		if (number(packet, "getXDist", "xDist") != 2 || number(packet, "getYDist", "yDist") != 3
+				|| number(packet, "getZDist", "zDist") != 2) return;
 		for (Dragon dragon : DRAGONS) {
 			if (dragon.state != State.SPAWNING) {
-				if (packet.getX() < dragon.pMinX || packet.getX() > dragon.pMaxX
-						|| packet.getZ() < dragon.pMinZ || packet.getZ() > dragon.pMaxZ) {
+				if (x < dragon.pMinX || x > dragon.pMaxX || z < dragon.pMinZ || z > dragon.pMaxZ) {
 					continue;
 				}
 				dragon.state = State.SPAWNING;
@@ -311,6 +319,22 @@ public final class DragonMarkers {
 				net.parz.Debug.log("dragons", () -> dragon.name + " dragon is spawning");
 			}
 		}
+	}
+
+	/** Calls the first method of the object that exists under one of the names. */
+	private static Object read(Object target, String... names) {
+		for (String name : names) {
+			try {
+				return target.getClass().getMethod(name).invoke(target);
+			} catch (ReflectiveOperationException ignored) {
+				// try the next name
+			}
+		}
+		throw new IllegalStateException("no method " + String.join("/", names) + " in " + target.getClass().getName());
+	}
+
+	private static double number(Object target, String... names) {
+		return ((Number) read(target, names)).doubleValue();
 	}
 
 	/** The dragon itself appears: it is alive, the indicator ends. */
