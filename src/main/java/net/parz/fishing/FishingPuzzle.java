@@ -79,11 +79,15 @@ public final class FishingPuzzle {
 	private static final long ACTIVE_MS = 8 * 60_000L;
 	private static final long DEATH_GRACE_MS = 1500;
 	private static final long DROP_WINDOW_MS = 4500;
+	/** A creature that vanishes farther away than this was not killed by you (it was unloaded). */
+	private static final double MAX_KILL_DISTANCE = 48;
+	private static final Pattern TAG = Pattern.compile("lv\\d+\\]");
 
 	// ---- what is going on while you fish ----
 	private static Creature active = null;
 	private static long activeSince = 0;
 	private static boolean seenTag = false;
+	private static double lastDistance = 0;
 	private static long lastSeenTag = 0;
 	/** When the drops are complete and the board is shown (0 = not decided yet). */
 	private static long showAt = 0;
@@ -141,12 +145,7 @@ public final class FishingPuzzle {
 		String lower = text.toLowerCase(Locale.ROOT);
 		for (Creature creature : CREATURES) {
 			if (lower.contains(creature.announcement())) {
-				active = creature;
-				activeSince = System.currentTimeMillis();
-				seenTag = false;
-				showAt = 0;
-				got.clear();
-				inventory = null;
+				startWatching(creature, System.currentTimeMillis());
 				Debug.log("fishing", () -> creature.title() + " spawned, waiting for its death");
 				return;
 			}
@@ -186,11 +185,52 @@ public final class FishingPuzzle {
 
 	private static void tick(Minecraft client) {
 		long now = System.currentTimeMillis();
-		if (active == null) {
+		if (!enabled() || client.player == null || client.level == null) {
+			active = null;
 			return;
 		}
-		if (!enabled() || client.player == null || client.level == null || now - activeSince > ACTIVE_MS) {
+		if (active != null && now - activeSince > ACTIVE_MS) {
 			active = null;
+		}
+		// the name tag of a creature: while it is there it lives. This also finds a creature whose spawn message
+		// was not seen (somebody else fished it up, you joined late, ...).
+		if (++scanTick >= 5) {
+			scanTick = 0;
+			Creature seen = null;
+			double distance = 0;
+			for (Entity entity : client.level.entitiesForRendering()) {
+				if (entity.hasCustomName() && entity.getCustomName() != null) {
+					String name = FORMATTING.matcher(entity.getCustomName().getString()).replaceAll("").toLowerCase(Locale.ROOT);
+					Creature creature = creatureOfTag(name);
+					if (creature != null && (active == null || creature == active)) {
+						double d = entity.distanceTo(client.player);
+						if (seen == null || d < distance) {
+							seen = creature;
+							distance = d;
+						}
+					}
+				}
+			}
+			if (seen != null) {
+				if (active == null) {
+					startWatching(seen, now);
+					final Creature found = seen;
+					Debug.log("fishing", () -> found.title() + " found by its name tag, waiting for its death");
+				}
+				seenTag = true;
+				lastSeenTag = now;
+				lastDistance = distance;
+			} else if (active != null && seenTag && now - lastSeenTag > DEATH_GRACE_MS && showAt == 0) {
+				if (lastDistance <= MAX_KILL_DISTANCE || !got.isEmpty()) {
+					showAt = now + DROP_WINDOW_MS;
+					Debug.log("fishing", () -> active.title() + " is dead (last seen " + Math.round(lastDistance) + " blocks away), collecting the drops");
+				} else {
+					Debug.log("fishing", () -> active.title() + " vanished " + Math.round(lastDistance) + " blocks away: no kill");
+					active = null;
+				}
+			}
+		}
+		if (active == null) {
 			return;
 		}
 		// what arrives in the inventory
@@ -213,28 +253,6 @@ public final class FishingPuzzle {
 			}
 		}
 		inventory = current;
-
-		// the name tag of the creature: while it is there it lives
-		if (++scanTick >= 5) {
-			scanTick = 0;
-			boolean there = false;
-			for (Entity entity : client.level.entitiesForRendering()) {
-				if (entity.hasCustomName() && entity.getCustomName() != null) {
-					String name = FORMATTING.matcher(entity.getCustomName().getString()).replaceAll("").toLowerCase(Locale.ROOT);
-					if (name.contains(active.tag()) && name.contains("lv")) {
-						there = true;
-						break;
-					}
-				}
-			}
-			if (there) {
-				seenTag = true;
-				lastSeenTag = now;
-			} else if (seenTag && now - lastSeenTag > DEATH_GRACE_MS && showAt == 0) {
-				showAt = now + DROP_WINDOW_MS;
-				Debug.log("fishing", () -> active.title() + " is gone, collecting the drops");
-			}
-		}
 		if (showAt != 0 && now >= showAt) {
 			Creature creature = active;
 			Set<Loot> result = new HashSet<>(got);
@@ -242,6 +260,25 @@ public final class FishingPuzzle {
 			showAt = 0;
 			start(creature, result);
 		}
+	}
+
+	private static void startWatching(Creature creature, long now) {
+		active = creature;
+		activeSince = now;
+		seenTag = false;
+		showAt = 0;
+		got.clear();
+		inventory = null;
+	}
+
+	/** The creature of a name tag like "[Lv597] Lord Jawbus 600M/600M" (lower case, colors removed), or null. */
+	private static Creature creatureOfTag(String name) {
+		for (Creature creature : CREATURES) {
+			if (TAG.matcher(name).find() && name.matches(".*lv\\d+\\]\\s*" + Pattern.quote(creature.tag()) + ".*")) {
+				return creature;
+			}
+		}
+		return null;
 	}
 
 	// ======================================================================================
