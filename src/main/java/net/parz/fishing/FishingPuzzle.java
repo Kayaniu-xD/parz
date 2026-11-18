@@ -79,8 +79,8 @@ public final class FishingPuzzle {
 
 	private static final Pattern FORMATTING = Pattern.compile("§.");
 	private static final long ACTIVE_MS = 8 * 60_000L;
-	private static final long DEATH_GRACE_MS = 500;
-	private static final long DROP_WINDOW_MS = 3000;
+	private static final long DEATH_GRACE_MS = 250;
+	private static final long DROP_WINDOW_MS = 1800;
 	/** A creature that vanishes farther away than this was not killed by you (it was unloaded). */
 	private static final double MAX_KILL_DISTANCE = 48;
 
@@ -88,6 +88,8 @@ public final class FishingPuzzle {
 	private static Creature active = null;
 	private static long activeSince = 0;
 	private static boolean seenTag = false;
+	/** The creature is dead and the board is shown (live: the drops are still counted). */
+	private static boolean deathTriggered = false;
 	/** True when YOU spawned the creature (its spawn message) or hurt it (your hit, your damage numbers). */
 	private static boolean mine = false;
 	private static double lastDistance = 0;
@@ -104,6 +106,10 @@ public final class FishingPuzzle {
 	private static final Set<Loot> boardGot = new HashSet<>();
 	private static long startMs = 0;
 	private static long endMs = 0;
+	/** While true the board is open and counts your drops live; the cards turn around afterwards. */
+	private static boolean boardLive = false;
+	/** When (ms since the board opened) the cards start to turn around. */
+	private static long flipBase = 0;
 	private static final boolean[] flipSound = new boolean[16];
 
 	private static final int CARD_W = 52;
@@ -203,13 +209,16 @@ public final class FishingPuzzle {
 			Debug.log("fishing", () -> "drop: " + loot.name() + " (" + why + ")");
 		}
 		// the creature may not have been seen die (its name tag is not found): the drops start the board as well
-		if (showAt == 0) {
-			showAt = System.currentTimeMillis() + DROP_WINDOW_MS;
+		if (active != null && !deathTriggered) {
+			triggerDeath(System.currentTimeMillis());
 		}
 	}
 
 	private static void tick(Minecraft client) {
 		long now = System.currentTimeMillis();
+		if (boardLive && active == null) {
+			freezeBoard(); // the watching ended for some reason: do not leave the board open
+		}
 		if (!enabled() || client.player == null || client.level == null) {
 			active = null;
 			return;
@@ -224,6 +233,7 @@ public final class FishingPuzzle {
 			Creature seen = null;
 			double distance = 0;
 			net.minecraft.world.phys.Vec3 creaturePos = null;
+			boolean seenDead = false;
 			List<net.minecraft.world.phys.Vec3> numbers = new ArrayList<>();
 			for (Entity entity : client.level.entitiesForRendering()) {
 				if (entity instanceof net.minecraft.world.entity.item.ItemEntity || entity instanceof net.minecraft.world.entity.player.Player) {
@@ -243,6 +253,9 @@ public final class FishingPuzzle {
 						seen = creature;
 						distance = d;
 						creaturePos = entity.position();
+						// 0 health in its name tag, or the game says it is dying: it is dead right now
+						seenDead = HEALTH_ZERO.matcher(name).find()
+								|| (entity instanceof net.minecraft.world.entity.LivingEntity living && living.isDeadOrDying());
 					}
 				}
 			}
@@ -255,6 +268,10 @@ public final class FishingPuzzle {
 				seenTag = true;
 				lastSeenTag = now;
 				lastDistance = distance;
+				if (seenDead && !deathTriggered) {
+					Debug.log("fishing", () -> "health is 0 (" + Math.round(lastDistance) + " blocks away)");
+					triggerDeath(now);
+				}
 				if (!mine && creaturePos != null) {
 					for (net.minecraft.world.phys.Vec3 number : numbers) {
 						if (number.distanceToSqr(creaturePos) <= 14 * 14) {
@@ -264,10 +281,10 @@ public final class FishingPuzzle {
 						}
 					}
 				}
-			} else if (active != null && seenTag && now - lastSeenTag > DEATH_GRACE_MS && showAt == 0) {
+			} else if (active != null && seenTag && now - lastSeenTag > DEATH_GRACE_MS && !deathTriggered) {
 				if (lastDistance <= MAX_KILL_DISTANCE || !got.isEmpty()) {
-					showAt = now + DROP_WINDOW_MS;
-					Debug.log("fishing", () -> active.title() + " is dead (last seen " + Math.round(lastDistance) + " blocks away), collecting the drops");
+					Debug.log("fishing", () -> active.title() + " is gone (last seen " + Math.round(lastDistance) + " blocks away)");
+					triggerDeath(now);
 				} else {
 					Debug.log("fishing", () -> active.title() + " vanished " + Math.round(lastDistance) + " blocks away: no kill");
 					active = null;
@@ -297,19 +314,45 @@ public final class FishingPuzzle {
 			}
 		}
 		inventory = current;
-		if (showAt != 0 && now >= showAt) {
-			if (!mine) {
-				Debug.log("fishing", () -> active.title() + " died, but you did not spawn it or hurt it: no memory");
-				active = null;
-				showAt = 0;
-				return;
-			}
-			Creature creature = active;
-			Set<Loot> result = new HashSet<>(got);
+		// the drops had their time: now the cards of everything you did not get turn around
+		if (deathTriggered && showAt != 0 && now >= showAt) {
 			active = null;
-			showAt = 0;
-			start(creature, result);
+			freezeBoard();
 		}
+	}
+
+	/** The creature just died: the memory opens at once (all cards face up) and counts your drops while it is open. */
+	private static void triggerDeath(long now) {
+		deathTriggered = true;
+		if (!mine) {
+			Debug.log("fishing", () -> active.title() + " died, but you did not spawn it or hurt it: no memory");
+			active = null;
+			return;
+		}
+		Debug.log("fishing", () -> active.title() + " is dead: memory opens");
+		showAt = now + DROP_WINDOW_MS;
+		board = active;
+		boardLive = true;
+		flipBase = Long.MAX_VALUE / 4;
+		endMs = Long.MAX_VALUE / 4;
+		java.util.Arrays.fill(flipSound, false);
+		startMs = now;
+		playing = true;
+		sound(1.0f);
+	}
+
+	/** The drops are known: from here on the cards of the items you did not get turn around. */
+	private static void freezeBoard() {
+		if (!boardLive) {
+			return;
+		}
+		boardLive = false;
+		boardGot.clear();
+		boardGot.addAll(got);
+		long t = System.currentTimeMillis() - startMs;
+		flipBase = Math.max(t, 500);
+		int flips = board.loot().size() - boardGot.size();
+		endMs = flipBase + Math.max(0, flips) * FLIP_STEP_MS + FLIP_MS + 4000;
 	}
 
 	private static Creature found() {
@@ -322,12 +365,15 @@ public final class FishingPuzzle {
 		seenTag = false;
 		showAt = 0;
 		mine = false;
+		deathTriggered = false;
 		got.clear();
 		inventory = null;
 	}
 
 	/** Part of a name tag that only a living mob has: its level "[Lv597]", its health "419M/600M" or the heart. */
 	private static final Pattern MOB_TAG = Pattern.compile("lv\\s*\\d+|\\d[kmb]?\\s*/\\s*\\d|❤");
+	/** "0/600m", "0m/600m", "0 / 600" in a name tag: no health left. */
+	private static final Pattern HEALTH_ZERO = Pattern.compile("(?<![0-9.,])0+(?:[.,]0+)?[kmb]?\s*/\s*[0-9]");
 	private static final Set<String> LOGGED_NAMES = new HashSet<>();
 	/** A floating damage number: "1,234", "✧1,234✧", "12.5k" with symbols around it, nothing else. */
 	private static final Pattern DAMAGE_NUMBER = Pattern.compile("^[^a-z0-9]*[0-9][0-9,.]*[kmb]?[^a-z0-9/]*$");
@@ -377,6 +423,8 @@ public final class FishingPuzzle {
 		board = creature;
 		boardGot.clear();
 		boardGot.addAll(result);
+		boardLive = false;
+		flipBase = SHOW_ALL_MS;
 		java.util.Arrays.fill(flipSound, false);
 		int flips = creature.loot().size() - boardGot.size();
 		long flipEnd = SHOW_ALL_MS + Math.max(0, flips) * FLIP_STEP_MS + FLIP_MS;
@@ -428,8 +476,9 @@ public final class FishingPuzzle {
 		graphics.outline(x + 2, y + 2, panelW - 4, panelH - 4, 0xFF2A2A33);
 		String title = board.title() + " - Loot Memory";
 		graphics.text(font, title, x + (panelW - font.width(title)) / 2, y + 9, board.color(), true);
-		boolean allDone = t >= SHOW_ALL_MS + (loot.size() - boardGot.size()) * FLIP_STEP_MS + FLIP_MS;
-		String hint = t < SHOW_ALL_MS ? "Remember the loot ..." : allDone ? "These are your drops" : "Turning around what you did not get ...";
+		Set<Loot> hasSet = boardLive ? got : boardGot;
+		boolean allDone = !boardLive && t >= flipBase + (loot.size() - boardGot.size()) * FLIP_STEP_MS + FLIP_MS;
+		String hint = boardLive || t < flipBase ? "Remember the loot ..." : allDone ? "These are your drops" : "Turning around what you did not get ...";
 		graphics.text(font, hint, x + (panelW - font.width(hint)) / 2, y + 21, 0xFF9A9AA6, true);
 
 		int flipIndex = 0;
@@ -439,10 +488,10 @@ public final class FishingPuzzle {
 			int row = i / columns;
 			int cx = x + 18 + col * (CARD_W + GAP);
 			int cy = y + 34 + row * (CARD_H + GAP);
-			boolean has = boardGot.contains(item);
+			boolean has = hasSet.contains(item);
 			double flip = 0; // 0 = face up, 1 = turned around
 			if (!has) {
-				long start = SHOW_ALL_MS + flipIndex * FLIP_STEP_MS;
+				long start = flipBase + flipIndex * FLIP_STEP_MS;
 				flip = Math.max(0, Math.min(1, (t - start) / (double) FLIP_MS));
 				if (flip >= 0.5 && flipIndex < flipSound.length && !flipSound[flipIndex]) {
 					flipSound[flipIndex] = true;
