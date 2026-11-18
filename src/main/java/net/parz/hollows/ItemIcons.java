@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
  * that are shown on its pages, for example on the Crystal Nucleus page. They do not depend on any resource pack.
  * Each picture is downloaded once (in the background) and kept in config/parz-icons/.
  */
-final class ItemIcons {
+public final class ItemIcons {
 	private static final String HOST = "hypixelskyblock.minecraft.wiki";
 	private static final Path DIR = FabricLoader.getInstance().getConfigDir().resolve("parz-icons");
 	/** The size the pictures are saved in (the wiki has 160x160 and 300x300). */
@@ -56,7 +56,7 @@ final class ItemIcons {
 	}
 
 	/** Starts the download of the pictures (if they are not saved yet). */
-	static void prefetch(Collection<String> names) {
+	public static void prefetch(Collection<String> names) {
 		for (String name : names) {
 			request(name);
 		}
@@ -129,7 +129,7 @@ final class ItemIcons {
 	 * The texture of the item picture, or null if it is not there (yet): it is then downloaded and the next
 	 * frames show it. Call this on the render thread.
 	 */
-	static Identifier textureFor(String name) {
+	public static Identifier textureFor(String name) {
 		String key = key(name);
 		Identifier known = TEXTURES.get(key);
 		if (known != null) {
@@ -156,7 +156,7 @@ final class ItemIcons {
 		}
 	}
 
-	static int size() {
+	public static int size() {
 		return SIZE;
 	}
 }

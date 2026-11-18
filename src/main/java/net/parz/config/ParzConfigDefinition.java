@@ -102,6 +102,15 @@ public final class ParzConfigDefinition {
 			"When you place all crystals and get the loot bundle of the Crystal Nucleus, a slot machine spins on your screen and stops on the rarest item you got. With a Divan's Alloy all three reels show the alloy: jackpot. Try it with /pz nucleus.",
 			true);
 
+	// ---- Fishing -------------------------------------------------------------------------
+	public static final Category FISHING = category("Fishing", "Tools for fishing.");
+
+	public static final Toggle FISHING_PUZZLE = FISHING.toggle(
+			"fishing.puzzle",
+			"Loot Memory",
+			"When Lord Jawbus, Thunder or Ragnarok is dead, a memory board shows all the loot it can drop. The cards of everything you did not get are turned around, your drops stay open. Try it with /pz fishing.",
+			true);
+
 	// ---- Update --------------------------------------------------------------------
 	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
 
