@@ -41,8 +41,24 @@ public final class PetsView {
 	private static final Pattern TITLE = Pattern.compile("^(\\(\\d+/\\d+\\)\\s*)?Pets(\\s.*)?$");
 	private static final Pattern FORMATTING = Pattern.compile("§.");
 
+	/** slot is null for the equipped pet that is on another page (it is only shown, nothing can be clicked). */
 	private record Entry(Slot slot, ItemStack stack, boolean pet, boolean favorite) {
+		boolean remote() {
+			return slot == null;
+		}
+
+		int index() {
+			return slot == null ? REMOTE_INDEX : slot.index;
+		}
 	}
+
+	private static final int REMOTE_INDEX = -2;
+	/** The equipped pet as last seen, and the page of the menu it was on. */
+	private static ItemStack equippedMemory = ItemStack.EMPTY;
+	private static int equippedPage = -1;
+	/** The page of the pets menu that is open (1 if the menu has only one page). */
+	private static int currentPage = 1;
+	private static final Pattern PAGE_OF_TITLE = Pattern.compile("^\\((\\d+)/\\d+\\)");
 
 	private record Hit(int x1, int y1, int x2, int y2, Runnable action) {
 		boolean contains(double x, double y) {
@@ -185,11 +201,34 @@ public final class PetsView {
 		for (Entry entry : entries(container)) {
 			(entry.pet() ? pets : controls).add(entry);
 		}
-		// the equipped pet is always at the top of the page, then the favourite pets (with a star);
+		Matcher pageMatch = PAGE_OF_TITLE.matcher(clean(screen.getTitle().getString()).trim());
+		currentPage = pageMatch.find() ? Integer.parseInt(pageMatch.group(1)) : 1;
+		// remember the equipped pet, also when it is on another page than the first one
+		Entry equipped = null;
+		for (Entry entry : pets) {
+			if (isActive(entry.stack())) {
+				equipped = entry;
+			}
+		}
+		if (equipped != null) {
+			equippedMemory = equipped.stack().copy();
+			equippedPage = currentPage;
+		} else if (equippedPage == currentPage) {
+			equippedMemory = ItemStack.EMPTY; // it is not on its page any more
+			equippedPage = -1;
+		}
+		// the equipped pet is shown on the first page only, at the top, then the favourite pets (with a star);
 		// the other pets keep the menu order
-		pets.sort(java.util.Comparator.comparing((Entry entry) -> !isActive(entry.stack()))
-				.thenComparing(entry -> !entry.favorite()));
+		if (currentPage == 1) {
+			pets.sort(java.util.Comparator.comparing((Entry entry) -> !isActive(entry.stack()))
+					.thenComparing(entry -> !entry.favorite()));
+		} else {
+			pets.sort(java.util.Comparator.comparing((Entry entry) -> !entry.favorite()));
+		}
 		observePets(container, pets);
+		if (currentPage == 1 && equipped == null && !equippedMemory.isEmpty()) {
+			pets.add(0, new Entry(null, equippedMemory, true, false)); // equipped on another page
+		}
 
 		// new menu page: forget the selection
 		int containerId = container.getMenu().containerId;
@@ -201,7 +240,7 @@ public final class PetsView {
 		}
 		Entry selected = null;
 		for (Entry pet : pets) {
-			if (pet.slot().index == selectedSlot) {
+			if (pet.index() == selectedSlot) {
 				selected = pet;
 			}
 		}
@@ -214,7 +253,7 @@ public final class PetsView {
 			if (selected == null && !pets.isEmpty()) {
 				selected = pets.getFirst();
 			}
-			selectedSlot = selected != null ? selected.slot().index : -1;
+			selectedSlot = selected != null ? selected.index() : -1;
 		}
 
 		graphics.fill(0, 0, screen.width, screen.height, 0xA0000000);
@@ -240,7 +279,7 @@ public final class PetsView {
 		int bottom = frame.pgY2() - 20;
 		int view = bottom - top;
 		// the equipped pet is on its own at the top, below the heading "Equipped Pet"
-		boolean hasEquipped = !pets.isEmpty() && isActive(pets.getFirst().stack());
+		boolean hasEquipped = currentPage == 1 && !pets.isEmpty() && (pets.getFirst().remote() || isActive(pets.getFirst().stack()));
 		int headerH = hasEquipped ? 12 : 0;
 		int separatorH = hasEquipped && pets.size() > 1 ? 8 : 0;
 		listMaxScroll = Math.max(0, pets.size() * ROW_STEP + headerH + separatorH - view);
@@ -284,7 +323,7 @@ public final class PetsView {
 				BookStyle.gem(graphics, x2 - 6 - 8, y + ROW_H / 2, BookStyle.GREEN);
 			}
 
-			int slotIndex = pet.slot().index;
+			int slotIndex = pet.index();
 			HITS.add(new Hit(x1, y, x2 - 6, y + ROW_H, () -> {
 				// one click selects the pet, a double click summons / despawns it
 				long now = System.currentTimeMillis();
@@ -295,7 +334,9 @@ public final class PetsView {
 				detailScroll = 0;
 				if (doubleClick) {
 					lastClickSlot = -1;
-					click((AbstractContainerScreen<?>) screen, pet.slot(), 0);
+					if (!pet.remote()) {
+						click((AbstractContainerScreen<?>) screen, pet.slot(), 0);
+					}
 				}
 			}));
 			y += ROW_STEP;
@@ -327,9 +368,11 @@ public final class PetsView {
 		List<Btn> actions = new ArrayList<>();   // despawn / convert / exp sharing
 		List<Btn> navigation = new ArrayList<>(); // pages, go back, close, search, sort
 		List<Btn> features = new ArrayList<>();   // pets, pet slots, autopet, score rewards, visibility
-		actions.add(new Btn(lore.contains("click to despawn") ? "Despawn" : lore.contains("click to summon") ? "Summon" : "Select",
-				() -> click(container, selected.slot(), 0), null));
-		if (lore.contains("convert")) {
+		if (!selected.remote()) {
+			actions.add(new Btn(lore.contains("click to despawn") ? "Despawn" : lore.contains("click to summon") ? "Summon" : "Select",
+					() -> click(container, selected.slot(), 0), null));
+		}
+		if (lore.contains("convert") && !selected.remote()) {
 			actions.add(new Btn("Convert to item", () -> click(container, selected.slot(), 1), null));
 		}
 		List<String> navOrder = List.of("previous page", "next page", "go back", "close", "search", "sort");
