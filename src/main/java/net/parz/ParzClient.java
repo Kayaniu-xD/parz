@@ -48,6 +48,7 @@ public class ParzClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
 				DashboardData.ensureAccount(client.getUser().getName()));
 		SkyBlockDetector.register();
+		Debug.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
@@ -73,7 +74,11 @@ public class ParzClient implements ClientModInitializer {
 							}
 							return 1;
 						}))
-						.then(ClientCommands.literal("help").executes(context -> {
+						.then(ClientCommands.literal("debug")
+							.executes(context -> debugCommand(context.getSource(), null))
+							.then(ClientCommands.literal("on").executes(context -> debugCommand(context.getSource(), true)))
+							.then(ClientCommands.literal("off").executes(context -> debugCommand(context.getSource(), false))))
+					.then(ClientCommands.literal("help").executes(context -> {
 							sendHelp(context.getSource());
 							return 1;
 						}))
@@ -115,10 +120,30 @@ public class ParzClient implements ClientModInitializer {
 			{"pz help", "Shows this list"}
 	};
 
+	/** /pz debug [on|off]: only for the developer account. */
+	private static int debugCommand(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, Boolean on) {
+		if (!Debug.allowed()) {
+			source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] /pz debug is only for the developer.")
+					.withStyle(net.minecraft.ChatFormatting.RED));
+			return 0;
+		}
+		if (on != null) {
+			Debug.set(on);
+		}
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Debug mode is " + (Debug.isOn() ? "ON" : "OFF")
+				+ (on == null ? " (use /pz debug on or /pz debug off)" : ""))
+				.withStyle(Debug.isOn() ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
+		return 1;
+	}
+
 	private static void sendHelp(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source) {
 		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Commands (click one to run it):")
 				.withStyle(net.minecraft.ChatFormatting.GOLD));
-		for (String[] entry : COMMANDS) {
+		java.util.List<String[]> shown = new java.util.ArrayList<>(java.util.Arrays.asList(COMMANDS));
+		if (Debug.allowed()) {
+			shown.add(new String[]{"pz debug", "Developer: shows everything Parz does in the chat (/pz debug on | off)"});
+		}
+		for (String[] entry : shown) {
 			String command = entry[0];
 			net.minecraft.network.chat.Component line = net.minecraft.network.chat.Component.literal("/" + command)
 					.withStyle(style -> style

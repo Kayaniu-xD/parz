@@ -76,11 +76,18 @@ public final class DragonMarkers {
 		return lines;
 	}
 
+	private static void setState(String state) {
+		if (!state.equals(lastState)) {
+			net.parz.Debug.log("dragons", () -> state);
+		}
+		lastState = state;
+	}
+
 	/** Ends the circles and says why in the chat, so a wrong end can be found. */
 	private static void drop(Minecraft client, String reason) {
 		latched = false;
 		outOfDungeonSince = 0;
-		lastState = "off (" + reason + ")";
+		setState("off (" + reason + ")");
 		if (client.player != null) {
 			client.player.sendSystemMessage(net.minecraft.network.chat.Component.literal("[Parz] Dragon circles off: " + reason));
 		}
@@ -95,7 +102,7 @@ public final class DragonMarkers {
 	private static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft client = Minecraft.getInstance();
 		if (!ParzConfigDefinition.DRAGON_CIRCLES.isEnabled()) {
-			lastState = "off (setting)";
+			setState("off (setting)");
 			return;
 		}
 		if (client.level == null || client.player == null) {
@@ -113,18 +120,19 @@ public final class DragonMarkers {
 		// during the fight (and when the Wither King spawns), so they are only looked at to start.
 		if (!latched) {
 			if (!SkyBlockDetector.featuresActive() || !DungeonInfo.inCatacombs()) {
-				lastState = "off (not in a dungeon)";
+				setState("off (not in a dungeon)");
 				return;
 			}
 			if (!DungeonInfo.floor().equals("M7")) {
-				lastState = "off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")";
+				setState("off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")");
 				return;
 			}
 			if (!inDragonPhase(client)) {
-				lastState = "off (not in the dragon phase of the boss fight)";
+				setState("off (not in the dragon phase of the boss fight)");
 				return;
 			}
 			latched = true;
+			net.parz.Debug.log("dragons", () -> "dragon phase of M7 recognised, the circles stay on");
 			outOfDungeonSince = 0;
 		}
 		// they only end when you really are somewhere else: out of the dungeon for 30 seconds, or back in the rooms
@@ -162,7 +170,7 @@ public final class DragonMarkers {
 		for (Dragon dragon : DRAGONS) {
 			drawNeckRing(graphics, font, dragon);
 		}
-		lastState = "showing the 5 circles (fov " + Math.round(fov) + ")";
+		setState("showing the 5 circles (fov " + Math.round(fov) + ")");
 	}
 
 	// ---- projection ----

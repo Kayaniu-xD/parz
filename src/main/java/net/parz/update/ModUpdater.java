@@ -90,6 +90,11 @@ public final class ModUpdater {
 	}
 
 	/** Error text when the status is ERROR. */
+	private static void setStatus(Status next) {
+		status = next;
+		net.parz.Debug.log("update", () -> next + (message.isEmpty() ? "" : " (" + message + ")"));
+	}
+
 	public static String message() {
 		return message;
 	}
@@ -185,23 +190,23 @@ public final class ModUpdater {
 	// ---- check / install ---------------------------------------------------------------
 
 	private static void doCheck() {
-		status = Status.CHECKING;
+		setStatus(Status.CHECKING);
 		try {
 			Release release = latestRelease();
 			latest = release;
 			status = compareVersions(release.version(), currentVersion()) > 0 ? Status.AVAILABLE : Status.UP_TO_DATE;
 		} catch (UpdateException e) {
 			message = e.getMessage();
-			status = Status.ERROR;
+			setStatus(Status.ERROR);
 		} catch (Exception e) {
 			ParzClient.LOGGER.warn("Update check failed", e);
 			message = "Could not reach GitHub";
-			status = Status.ERROR;
+			setStatus(Status.ERROR);
 		}
 	}
 
 	private static void doInstall(Release release, Consumer<Component> chat) {
-		status = Status.DOWNLOADING;
+		setStatus(Status.DOWNLOADING);
 		try {
 			ModContainer container = FabricLoader.getInstance().getModContainer(ParzClient.MOD_ID)
 					.orElseThrow(() -> new UpdateException("Parz is not loaded"));
@@ -221,16 +226,16 @@ public final class ModUpdater {
 			Files.move(partFile, newFile, StandardCopyOption.REPLACE_EXISTING);
 
 			scheduleSwap(newFile, oldJar, finalJar);
-			status = Status.READY;
+			setStatus(Status.READY);
 			tell(chat, "Parz " + release.version() + " is downloaded. It replaces the old mod when you close Minecraft - restart the game to use it.");
 		} catch (UpdateException e) {
 			message = e.getMessage();
-			status = Status.ERROR;
+			setStatus(Status.ERROR);
 			tell(chat, "Update failed: " + e.getMessage());
 		} catch (Exception e) {
 			ParzClient.LOGGER.warn("Update failed", e);
 			message = e.getClass().getSimpleName() + " " + e.getMessage();
-			status = Status.ERROR;
+			setStatus(Status.ERROR);
 			tell(chat, "Update failed: " + message);
 		}
 	}

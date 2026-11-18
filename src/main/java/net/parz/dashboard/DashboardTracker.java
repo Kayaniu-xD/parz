@@ -182,6 +182,7 @@ public final class DashboardTracker {
 				}
 			}
 			skill.lastUpdate = now;
+			net.parz.Debug.log("skills", () -> "action bar: " + skill.name + " +" + gained + " xp (" + Math.round(skill.percent * 10) / 10.0 + "%)");
 			dirty = true;
 		}
 	}
@@ -232,6 +233,10 @@ public final class DashboardTracker {
 		// the skills / collections menu was just closed: write everything it showed to disk
 		if (kind == null && openMenu != null) {
 			saveIfDirty();
+		}
+		if (!java.util.Objects.equals(kind, openMenu)) {
+			final String shown = kind;
+			net.parz.Debug.log("menu", () -> shown == null ? "a menu of Parz was closed, data saved" : "reading the " + shown + " menu");
 		}
 		openMenu = kind;
 	}

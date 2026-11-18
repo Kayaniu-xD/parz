@@ -164,6 +164,9 @@ public final class CollectionTracker {
 				apply(name, delta);
 			} else if (delta < 0 && subtractEnabled() && !sold) {
 				apply(name, delta);
+			} else if (delta != 0) {
+				net.parz.Debug.log("collection", () -> "inventory change of " + name + " (" + delta + ") ignored: "
+						+ (delta > 0 ? "just bought" : subtractEnabled() ? "just sold" : "subtracting is off"));
 			}
 		}
 		baseline = current;
@@ -216,9 +219,13 @@ public final class CollectionTracker {
 			if ("+".equals(m.group(1))) {
 				if (!bought) {
 					apply(name, amount);
+				} else {
+					net.parz.Debug.log("sacks", () -> "+" + amount + " " + name + " ignored (just bought)");
 				}
 			} else if (subtractEnabled() && !sold && !menuRecent) {
 				apply(name, -amount);
+			} else {
+				net.parz.Debug.log("sacks", () -> "-" + amount + " " + name + " ignored (sold, menu open or subtracting off)");
 			}
 		}
 	}
@@ -257,11 +264,13 @@ public final class CollectionTracker {
 
 		Matcher done = DUNGEON_DONE.matcher(text);
 		if (done.find()) {
+			net.parz.Debug.log("dungeon", () -> "completion line recognised: " + text);
 			completeFloor(parseFloor(done.group(2)), done.group(1) != null);
 			return;
 		}
 		Matcher shortHeader = DUNGEON_HEADER_SHORT.matcher(text);
 		if (shortHeader.find()) {
+			net.parz.Debug.log("dungeon", () -> "run header recognised: " + text + " (waiting for \"Defeated ... in ...\")");
 			pendingFloor = parseFloor(shortHeader.group(3));
 			pendingMaster = shortHeader.group(1).startsWith("Master") || shortHeader.group(2).equals("M");
 			pendingMs = now;
@@ -269,12 +278,14 @@ public final class CollectionTracker {
 		}
 		Matcher header = DUNGEON_HEADER.matcher(text);
 		if (header.find()) {
+			net.parz.Debug.log("dungeon", () -> "run header recognised: " + text + " (waiting for \"Defeated ... in ...\")");
 			pendingFloor = parseFloor(header.group(2));
 			pendingMaster = header.group(1) != null;
 			pendingMs = now;
 			return;
 		}
 		if (pendingFloor > 0 && now - pendingMs <= DUNGEON_CONFIRM_MS && DUNGEON_CONFIRM.matcher(text).find()) {
+			net.parz.Debug.log("dungeon", () -> "confirmation line recognised: " + text);
 			completeFloor(pendingFloor, pendingMaster);
 			pendingFloor = 0;
 		}
@@ -292,6 +303,7 @@ public final class CollectionTracker {
 		}
 		// the same run can be announced by several lines
 		if (floor == lastRunFloor && master == lastRunMaster && now - lastRunMs < DUNGEON_COOLDOWN_MS) {
+			net.parz.Debug.log("dungeon", () -> "run already counted, skipped");
 			return;
 		}
 		lastRunFloor = floor;
@@ -306,6 +318,10 @@ public final class CollectionTracker {
 			c.addKills(kills);
 			c.lastUpdate = now;
 			DashboardTracker.markDirty();
+			net.parz.Debug.log("dungeon", () -> "run counted: " + boss + " +" + kills + " (now " + c.total + ")");
+		} else {
+			net.parz.Debug.log("dungeon", () -> "run NOT counted: the " + boss + " collection is "
+					+ (c == null ? "not known yet" : "UNKNOWN") + " - open it once in /collections");
 		}
 		ParzClient.LOGGER.info("Dungeon run finished: {}Floor {} -> {} +{}", master ? "Master Mode " : "", floor, boss, kills);
 	}
@@ -319,14 +335,18 @@ public final class CollectionTracker {
 			if (text.contains("Sold") || text.contains("Sell Offer") || text.contains("from selling")
 					|| text.contains("Instant Sell") || text.contains("Sell Order")) {
 				lastSaleMs = now;
+			net.parz.Debug.log("trade", () -> "sale recognised: " + text);
 			} else if (text.contains("Bought") || text.contains("Claimed") || text.contains("Buy Order")
 					|| text.contains("Instant Buy")) {
 				lastBuyMs = now;
+			net.parz.Debug.log("trade", () -> "purchase recognised: " + text);
 			}
 		} else if (text.startsWith("You sold ")) {
 			lastSaleMs = now;
+			net.parz.Debug.log("trade", () -> "sale recognised: " + text);
 		} else if (text.startsWith("You bought ") || text.startsWith("You purchased ")) {
 			lastBuyMs = now;
+			net.parz.Debug.log("trade", () -> "purchase recognised: " + text);
 		}
 	}
 
@@ -341,6 +361,8 @@ public final class CollectionTracker {
 		DashboardData.Collection c = DashboardData.get().collections.get(recipe.collectionKey());
 		// never opened in /collections yet: the real total is unknown, the next menu visit fixes that
 		if (c == null || "UNKNOWN".equals(c.status)) {
+			net.parz.Debug.log("collection", () -> "no data for the " + recipe.collectionKey() + " collection yet (open /collections), "
+					+ amount + " " + itemName + " not counted");
 			return;
 		}
 		double newTotal = Math.max(0, c.total + amount * recipe.multiplier());
@@ -350,6 +372,8 @@ public final class CollectionTracker {
 		c.setTotal(newTotal);
 		c.lastUpdate = System.currentTimeMillis();
 		DashboardTracker.markDirty();
+		net.parz.Debug.log("collection", () -> c.name + " " + (amount >= 0 ? "+" : "") + amount * recipe.multiplier() + " -> " + c.total
+				+ " (" + itemName + ")");
 		ParzClient.LOGGER.debug("Collection {} {}{} -> {}", c.name, amount >= 0 ? "+" : "", amount * recipe.multiplier(), c.total);
 	}
 

@@ -155,6 +155,7 @@ public final class DungeonMap {
 		}
 		boolean inCatacombs = DungeonInfo.inCatacombs() && SkyBlockDetector.featuresActive();
 		if (inCatacombs != wasInCatacombs) {
+			net.parz.Debug.log("dungeon", () -> inCatacombs ? "in a dungeon: " + DungeonInfo.describe() : "left the dungeon, map reset");
 			resetRun(); // a new run starts, or the old one is over
 			wasInCatacombs = inCatacombs;
 		}
@@ -175,12 +176,21 @@ public final class DungeonMap {
 				scanner.markEntrance(startCell[0], startCell[1]);
 			}
 			buildViews();
+			String summary = "scan: " + scanner.rooms().size() + " rooms, " + scanner.unidentified() + " without a name, "
+					+ scanner.doors().size() + " doors";
+			if (!summary.equals(lastScanSummary)) {
+				lastScanSummary = summary;
+				net.parz.Debug.log("dungeon", () -> summary);
+			}
 		} else if (tick % 5 == 0 && !views.isEmpty()) {
 			updateStates();
 		}
 	}
 
+	private static String lastScanSummary = "";
+
 	private static void resetRun() {
+		lastScanSummary = "";
 		scanner.reset();
 		java.util.Arrays.fill(visited, false);
 		startCell = null;
@@ -210,6 +220,7 @@ public final class DungeonMap {
 		}
 		if (startCell == null) {
 			startCell = cell;
+			net.parz.Debug.log("dungeon", () -> "start room cell: " + cell[0] + "," + cell[1]);
 		}
 	}
 
@@ -366,6 +377,7 @@ public final class DungeonMap {
 			for (int[] cell : view.worldCells) {
 				entered |= visited[cell[1] * 6 + cell[0]];
 			}
+			State before = view.state;
 			State fromMap = mapAligned ? mapStates[i] : null;
 			if (fromMap != null && fromMap != State.UNEXPLORED) {
 				view.state = fromMap;
@@ -376,6 +388,10 @@ public final class DungeonMap {
 			}
 			if (view.type.equals("entrance")) {
 				view.state = entered || fromMap != null ? State.COMPLETE : State.ENTERED;
+			}
+			if (view.state != before) {
+				final State after = view.state;
+				net.parz.Debug.log("rooms", () -> (view.name.isEmpty() ? view.type : view.name) + ": " + before + " -> " + after);
 			}
 		}
 	}

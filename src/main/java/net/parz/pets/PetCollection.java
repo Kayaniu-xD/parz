@@ -199,6 +199,11 @@ public final class PetCollection {
 			}
 			data.petPageCount = Math.max(data.petPageCount, total);
 		}
+		final int shownPage = page;
+		final int shownTotal = total;
+		net.parz.Debug.log("pets", () -> "page " + shownPage + "/" + shownTotal + ": " + fresh.size() + " pets read, "
+				+ (complete ? "the page was replaced" : "only new pets were added (filtered or incomplete view)")
+				+ ", " + ownedCount() + " of " + totalCount() + " pets owned");
 		version++;
 		DashboardTracker.markDirty();
 	}

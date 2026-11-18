@@ -24,7 +24,11 @@ public final class SkyBlockDetector {
 	public static void register() {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (++tickCounter % 20 == 0) {
-				onSkyBlock = detect(client);
+				boolean now = detect(client);
+				if (now != onSkyBlock) {
+					net.parz.Debug.log("skyblock", () -> now ? "SkyBlock recognised, Parz features are active" : "not on SkyBlock (any more)");
+				}
+				onSkyBlock = now;
 			}
 		});
 	}
