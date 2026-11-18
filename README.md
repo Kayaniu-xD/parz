@@ -39,7 +39,6 @@ Parz updates itself from the GitHub releases.
 | `/pz dash` | Opens the dashboard (skills, collections, playtime) |
 | `/pz hud` | Opens the HUD editor to move and resize the HUD elements |
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
-| `/pz idea <your idea>` | Opens a new GitHub issue with your idea already written into it, so you only have to press "Submit new issue" (needs a GitHub account) |
 | `/pz update` | Installs the newest version from GitHub |
 
 ## How it works
