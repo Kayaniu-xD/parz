@@ -73,11 +73,6 @@ public class ParzClient implements ClientModInitializer {
 							}
 							return 1;
 						}))
-						.then(ClientCommands.literal("idea")
-								.executes(context -> IdeaCommand.run(""))
-								.then(ClientCommands.argument("idea", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
-										.executes(context -> IdeaCommand.run(
-												com.mojang.brigadier.arguments.StringArgumentType.getString(context, "idea")))))
 						.then(ClientCommands.literal("dash").executes(context -> {
 							screenToOpen = DashboardScreen::new;
 							return 1;
