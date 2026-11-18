@@ -59,7 +59,7 @@ public final class NucleusSlot {
 	private static long startMs = 0;
 	private static boolean jackpot = false;
 	private static Drop best = null;
-	private static final List<ItemStack>[] STRIPS = newStrips();
+	private static final List<String>[] STRIPS = newStrips();
 	private static final long[] STOP_MS = new long[3];
 	private static final boolean[] stopped = new boolean[3];
 	private static long endMs = 0;
@@ -71,15 +71,20 @@ public final class NucleusSlot {
 	private static final int GOLD = 0xFFFFAA00;
 
 	@SuppressWarnings("unchecked")
-	private static List<ItemStack>[] newStrips() {
-		return new List[]{new ArrayList<ItemStack>(), new ArrayList<ItemStack>(), new ArrayList<ItemStack>()};
+	private static List<String>[] newStrips() {
+		return new List[]{new ArrayList<String>(), new ArrayList<String>(), new ArrayList<String>()};
 	}
 
 	private NucleusSlot() {
 	}
 
 	public static void register() {
-		ItemIcons.load();
+		// the pictures of everything the Nucleus can give are fetched now, so they are there when the machine runs
+		ItemIcons.prefetch(java.util.List.of("Divan's Alloy", "Divan Fragment", "Jade Dye", "Prehistoric Egg", "Precious Pearl",
+				"Wishing Compass", "Claw Fossil", "Helix Fossil", "Quick Claw", "Recall Potion", "Treasurite", "Gemstone Mixture",
+				"Enchanted Book", "Gold Essence", "Diamond Essence", "Jaderald", "Dwarven O's Gemstone Grahams", "Oil Barrel",
+				"Pickonimbus 2000", "Bob-omb", "Ruby Crystal", "Jasper Crystal", "Fine Jasper Gemstone", "Flawed Jasper Gemstone",
+				"Flawless Jasper Gemstone", "Flawless Ruby Gemstone", "Flawed Ruby Gemstone", "Fine Ruby Gemstone"));
 		ClientReceiveMessageEvents.GAME.register(Debug.message("nucleus chat", (message, overlay) -> {
 			if (!overlay && enabled()) {
 				onMessage(message);
@@ -282,7 +287,7 @@ public final class NucleusSlot {
 			others.add("Prehistoric Egg");
 		}
 		for (int reel = 0; reel < 3; reel++) {
-			List<ItemStack> strip = STRIPS[reel];
+			List<String> strip = STRIPS[reel];
 			strip.clear();
 			int length = 26 + reel * 9 + (alloy && reel == 2 ? 10 : 0);
 			String last = "";
@@ -292,12 +297,12 @@ public final class NucleusSlot {
 					pick = pool.get(random.nextInt(pool.size()));
 				} while (pick.equals(last) && pool.size() > 1);
 				last = pick;
-				strip.add(iconFor(pick));
+				strip.add(pick);
 			}
 			// the last item is where the reel stops: three alloys for the jackpot, otherwise the rarest item
 			// in the middle with other rewards at its sides
 			String target = alloy || reel == 1 ? rarest.name() : others.get(random.nextInt(others.size()));
-			strip.add(iconFor(target));
+			strip.add(target);
 		}
 		STOP_MS[0] = 2200;
 		STOP_MS[1] = 3100;
@@ -379,7 +384,7 @@ public final class NucleusSlot {
 	}
 
 	private static void drawReel(GuiGraphicsExtractor graphics, int reel, int rx, int ry, long t) {
-		List<ItemStack> strip = STRIPS[reel];
+		List<String> strip = STRIPS[reel];
 		if (strip.isEmpty()) {
 			return;
 		}
@@ -398,11 +403,7 @@ public final class NucleusSlot {
 		for (int k = first; k <= lastShown; k++) {
 			double offset = (position - k) * CELL; // 0 = in the middle of the window, positive = already below it
 			int iy = (int) Math.round(ry + (CELL - 32) / 2.0 + offset);
-			graphics.pose().pushMatrix();
-			graphics.pose().translate(rx + (CELL - 32) / 2f, iy);
-			graphics.pose().scale(2f, 2f);
-			graphics.item(strip.get(k), 0, 0);
-			graphics.pose().popMatrix();
+			drawIcon(graphics, strip.get(k), rx + (CELL - 32) / 2, iy);
 		}
 		graphics.disableScissor();
 	}
@@ -456,12 +457,26 @@ public final class NucleusSlot {
 	// Icons: an item of the game that looks like the reward
 	// ======================================================================================
 
-	private static ItemStack iconFor(String name) {
-		// the real SkyBlock texture (the model of the server resource pack or the head of the item)
-		ItemStack real = ItemIcons.stackFor(name);
-		if (real != null) {
-			return real;
+	/** Cached vanilla stand-ins for the items that have no picture (yet). */
+	private static final java.util.Map<String, ItemStack> FALLBACKS = new java.util.HashMap<>();
+
+	/** An item 32x32: the picture of the wiki, or - until it is downloaded or if there is none - a vanilla item. */
+	private static void drawIcon(GuiGraphicsExtractor graphics, String name, int x, int y) {
+		Identifier texture = ItemIcons.textureFor(name);
+		if (texture != null) {
+			int size = ItemIcons.size();
+			graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, 32, 32, size, size, size, size);
+			return;
 		}
+		ItemStack stack = FALLBACKS.computeIfAbsent(name, NucleusSlot::iconFor);
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x, y);
+		graphics.pose().scale(2f, 2f);
+		graphics.item(stack, 0, 0);
+		graphics.pose().popMatrix();
+	}
+
+	private static ItemStack iconFor(String name) {
 		String n = name.toLowerCase(Locale.ROOT);
 		ItemStack stack;
 		if (n.contains("alloy")) {
