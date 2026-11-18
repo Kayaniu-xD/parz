@@ -84,6 +84,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   groups: pet actions (Despawn, Convert to item, Exp Sharing), navigation (Previous / Next Page, Go Back, Close,
   Search, Sort) and the rest (Pet Slots, Autopet, Pet Score Rewards, Pet Visibility). Every button stays at its own spot.
 - One click selects a pet, a double click summons or despawns it.
+- **Right click** on a pet makes it a favourite (or removes the star). Parz reads the click the server wants for
+  that from the tooltip of the pet.
 - Favourite pets are listed first. The equipped pet is shown on the first page, at the top, under the heading
   **Equipped Pet**, even if it is on another page. A pet from another page can only be looked at there; to despawn
   it, open its page.
