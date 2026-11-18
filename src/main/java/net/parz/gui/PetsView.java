@@ -60,7 +60,12 @@ public final class PetsView {
 	private static int currentPage = 1;
 	private static final Pattern PAGE_OF_TITLE = Pattern.compile("^\\((\\d+)/\\d+\\)");
 
-	private record Hit(int x1, int y1, int x2, int y2, Runnable action) {
+	/** action = left click, right = right click (null: nothing happens). */
+	private record Hit(int x1, int y1, int x2, int y2, Runnable action, Runnable right) {
+		Hit(int x1, int y1, int x2, int y2, Runnable action) {
+			this(x1, y1, x2, y2, action, null);
+		}
+
 		boolean contains(double x, double y) {
 			return x >= x1 && x < x2 && y >= y1 && y < y2;
 		}
@@ -337,7 +342,7 @@ public final class PetsView {
 						click((AbstractContainerScreen<?>) screen, pet.slot(), 0);
 					}
 				}
-			}));
+			}, () -> toggleFavorite((AbstractContainerScreen<?>) screen, pet)));
 			y += ROW_STEP;
 			if (hasEquipped && pet == pets.getFirst() && separatorH > 0) {
 				BookStyle.footerDivider(graphics, x1, x2 - 6, y + 1);
@@ -724,10 +729,13 @@ public final class PetsView {
 
 	/** Left click: select a pet / press a button. Always consumed so the normal menu logic never runs. */
 	public static boolean click(double mouseX, double mouseY, int button) {
-		if (button == 0) {
+		if (button == 0 || button == 1) {
 			for (int i = HITS.size() - 1; i >= 0; i--) {
 				if (HITS.get(i).contains(mouseX, mouseY)) {
-					HITS.get(i).action().run();
+					Runnable run = button == 0 ? HITS.get(i).action() : HITS.get(i).right();
+					if (run != null) {
+						run.run();
+					}
 					break;
 				}
 			}
@@ -745,6 +753,48 @@ public final class PetsView {
 			detailScroll = clamp(detailScroll - amount * 20, 0, detailMaxScroll);
 		}
 		return true;
+	}
+
+	/**
+	 * Right click on a pet: makes it a favourite (or takes the star away). The click the server wants for that is
+	 * read from the tooltip of the pet ("... to favorite!"), so it is always the right one.
+	 */
+	private static void toggleFavorite(AbstractContainerScreen<?> container, Entry pet) {
+		Minecraft client = Minecraft.getInstance();
+		if (pet.remote()) {
+			notice(client, "Open the page of this pet to change its favourite star");
+			return;
+		}
+		String hint = null;
+		ItemLore lore = pet.stack().get(DataComponents.LORE);
+		if (lore != null) {
+			for (Component line : lore.lines()) {
+				String text = clean(line.getString()).toLowerCase(Locale.ROOT);
+				if (text.contains("favorite") || text.contains("favourite")) {
+					hint = text;
+					break;
+				}
+			}
+		}
+		if (hint == null) {
+			net.parz.Debug.log("pets", () -> "no favorite line in the tooltip of " + clean(pet.stack().getHoverName().getString()));
+			notice(client, "No favourite action found in the tooltip of this pet");
+			return;
+		}
+		final String line = hint;
+		boolean shift = line.contains("shift");
+		int button = line.contains("right") ? 1 : 0;
+		net.parz.Debug.log("pets", () -> "favourite click: \"" + line + "\" -> " + (shift ? "shift " : "") + (button == 1 ? "right" : "left"));
+		if (client.gameMode != null && client.player != null) {
+			client.gameMode.handleContainerInput(container.getMenu().containerId, pet.slot().index, button,
+					shift ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, client.player);
+		}
+	}
+
+	private static void notice(Minecraft client, String text) {
+		if (client.player != null) {
+			client.player.sendSystemMessage(Component.literal("[Parz] " + text));
+		}
 	}
 
 	/** Sends a click on a slot of the real menu to the server. */
