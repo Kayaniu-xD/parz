@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
@@ -20,25 +19,55 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Master Mode 7, the dragon phase of the boss fight: a circle on the neck (the chin block of the statue) of each
- * of the five dragons. The circles are fixed in the world and always there, also before a dragon has spawned and
- * after the relics were placed. Drawn on the screen from your own camera. (Boxes and beams like in Devonian were
- * removed: drawing their long lines pixel by pixel on the screen cost far too many frames.)
+ * Master Mode 7, the dragon phase of the boss fight: the arrow stack indicator, copied from the Wither Dragons
+ * feature of NoammAddons. While a dragon is spawning (the flame particles of its statue) a cyan ring shows where to
+ * aim your bow so the arrow lands on the stack position, including the drop of the arrow over the distance. The
+ * ring is a circle that always faces you, is drawn through walls and gets bigger with the distance.
  */
 public final class DragonMarkers {
-	/** A dragon: name, color and the chin block of its statue (its neck). */
-	private record Dragon(String name, int color, BlockPos chin) {
+	private enum State { DEAD, SPAWNING, ALIVE }
+
+	/** A dragon: its name, where it spawns, the box it flies in, the area of its spawn particles and the stack position. */
+	private static final class Dragon {
+		final String name;
+		final Vec3 spawn;
+		final Vec3 stack;
+		final double minX, minZ, maxX, maxZ;
+		final double pMinX, pMaxX, pMinZ, pMaxZ;
+		State state = State.DEAD;
+		int timeToSpawn = 100;
+
+		Dragon(String name, Vec3 spawn, Vec3 stack, double[] box, double[] particleRange) {
+			this.name = name;
+			this.spawn = spawn;
+			this.stack = stack;
+			this.minX = box[0];
+			this.minZ = box[1];
+			this.maxX = box[2];
+			this.maxZ = box[3];
+			this.pMinX = particleRange[0];
+			this.pMaxX = particleRange[1];
+			this.pMinZ = particleRange[2];
+			this.pMaxZ = particleRange[3];
+		}
 	}
 
+	// the same positions as NoammAddons (WitherDragonEnum and fixedStackPositions)
 	private static final Dragon[] DRAGONS = {
-			new Dragon("Power", 0xFFFF5555, new BlockPos(32, 18, 59)),
-			new Dragon("Apex", 0xFF55FF55, new BlockPos(32, 19, 94)),
-			new Dragon("Soul", 0xFFAA00AA, new BlockPos(56, 18, 120)),
-			new Dragon("Ice", 0xFF55FFFF, new BlockPos(79, 19, 94)),
-			new Dragon("Flame", 0xFFFFAA00, new BlockPos(80, 19, 56))
+			new Dragon("Power", new Vec3(27, 14, 59), new Vec3(28, 14, 58),
+					new double[]{14.5, 45.5, 39.5, 70.5}, new double[]{24, 30, 56, 62}),
+			new Dragon("Flame", new Vec3(85, 14, 56), new Vec3(85, 14, 56),
+					new double[]{72, 47, 102, 77}, new double[]{82, 88, 53, 59}),
+			new Dragon("Apex", new Vec3(27, 14, 94), new Vec3(27, 14, 90),
+					new double[]{7, 80, 37, 110}, new double[]{23, 29, 91, 97}),
+			new Dragon("Ice", new Vec3(84, 14, 94), new Vec3(84, 14, 97),
+					new double[]{71.5, 82.5, 96.5, 107.5}, new double[]{82, 88, 91, 97}),
+			new Dragon("Soul", new Vec3(56, 14, 125), new Vec3(56, 14, 125),
+					new double[]{45.5, 113.5, 68.5, 136.5}, new double[]{53, 59, 122, 128})
 	};
-	private static final double RING_RADIUS_BLOCKS = 1.5;
-	private static final int OUTLINE_COLOR = 0xFF000000;
+	private static final int INDICATOR_COLOR = 0xFF00FFFF;
+	private static final double INDICATOR_SIZE = 2.0;
+	private static final double INDICATOR_THICKNESS = 3.0;
 	/** The dragon phase is below this height. */
 	private static final double PHASE_5_MAX_Y = 45;
 
@@ -60,6 +89,8 @@ public final class DragonMarkers {
 	}
 
 	public static void register() {
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+				net.parz.Debug.tick("dragon timers", DragonMarkers::tick));
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 				Identifier.fromNamespaceAndPath("parz", "dragon_markers"),
 				net.parz.Debug.hud("dragon circles", DragonMarkers::render));
@@ -77,6 +108,9 @@ public final class DragonMarkers {
 				&& hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
 			BlockPos pos = hit.getBlockPos();
 			lines.add("you look at the block " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+		}
+		for (Dragon dragon : DRAGONS) {
+			lines.add(dragon.name + " dragon: " + dragon.state);
 		}
 		lines.add("dragon markers: " + lastState + (latched ? " [kept on]" : ""));
 		return lines;
@@ -118,6 +152,7 @@ public final class DragonMarkers {
 		if (client.level != lastLevel) {
 			// a new world object: only a different place ends the circles, not a reload inside the boss fight
 			lastLevel = client.level;
+				resetStates();
 			if (latched && !DungeonInfo.inCatacombs()) {
 				drop(client, "the world changed and you are not in a dungeon");
 			}
@@ -164,11 +199,15 @@ public final class DragonMarkers {
 		screenW = client.getWindow().getGuiScaledWidth();
 		screenH = client.getWindow().getGuiScaledHeight();
 
-		Font font = client.font;
+		Vec3 eye = client.player.getEyePosition();
+		int shown = 0;
 		for (Dragon dragon : DRAGONS) {
-			drawNeckRing(graphics, font, dragon);
+			if (dragon.state == State.SPAWNING) {
+				drawIndicator(graphics, dragon, eye);
+				shown++;
+			}
 		}
-		setState("showing the 5 circles");
+		setState(shown == 0 ? "waiting for a dragon to spawn" : "showing " + shown + " arrow stack indicator(s)");
 	}
 
 	// ---- projection ----
@@ -187,33 +226,119 @@ public final class DragonMarkers {
 		return new double[]{(ndcX * 0.5 + 0.5) * screenW, (0.5 - ndcY * 0.5) * screenH, distance};
 	}
 
-	// ---- drawing ----
+	// ---- the arrow stack indicator (copied from NoammAddons) ----
 
-	/** A circle around the neck (the chin block) of the dragon statue. */
-	private static void drawNeckRing(GuiGraphicsExtractor graphics, Font font, Dragon dragon) {
-		double x = dragon.chin().getX() + 0.5;
-		double y = dragon.chin().getY() + 0.5;
-		double z = dragon.chin().getZ() + 0.5;
-		double[] centre = project(x, y, z);
+	/**
+	 * Where to aim: the target moved up by the drop of the arrow on its way (a bow arrow flies at speed 3, loses 1%
+	 * speed per tick and drops 0.05 per tick). Null if the target is out of reach.
+	 */
+	private static Vec3 calculateLead(Vec3 target, Vec3 eye) {
+		double distToTargetSq = target.distanceToSqr(eye);
+		double currentArrowDist = 0;
+		double currentSpeed = 3.0;
+		double currentYVel = 0;
+		double drop = 0;
+		for (int i = 0; i < 160; i++) {
+			currentArrowDist += currentSpeed;
+			currentSpeed *= 0.99;
+			drop += currentYVel;
+			currentYVel -= 0.05;
+			currentYVel *= 0.99;
+			if (currentArrowDist * currentArrowDist >= distToTargetSq) {
+				return target.subtract(0, drop, 0);
+			}
+		}
+		return null;
+	}
+
+	private static void drawIndicator(GuiGraphicsExtractor graphics, Dragon dragon, Vec3 eye) {
+		Vec3 target = dragon.stack.add(0.5, 3.5, 0.5);
+		Vec3 lead = calculateLead(target, eye);
+		if (lead == null) {
+			return;
+		}
+		double distance = eye.distanceTo(target);
+		double radiusBlocks = INDICATOR_SIZE * Math.max(0.5, Math.sqrt(distance / 50.0));
+		double[] centre = project(lead.x, lead.y, lead.z);
 		if (centre == null) {
 			return;
 		}
-		// the size of the ring: how far a point RING_RADIUS_BLOCKS above the middle is on the screen
-		double[] above = project(x + up.x() * RING_RADIUS_BLOCKS, y + up.y() * RING_RADIUS_BLOCKS, z + up.z() * RING_RADIUS_BLOCKS);
+		// the ring always faces you: its size is how far a point radiusBlocks above the middle is on the screen
+		double[] above = project(lead.x + up.x() * radiusBlocks, lead.y + up.y() * radiusBlocks, lead.z + up.z() * radiusBlocks);
+		double radius = above == null ? 12 : Math.hypot(above[0] - centre[0], above[1] - centre[1]);
+		radius = Math.max(4, Math.min(300, radius));
+		// the line is 2 * 3/40 blocks thick like in NoammAddons
+		int thick = (int) Math.max(2, Math.round(radius * (2 * INDICATOR_THICKNESS / 40.0) / radiusBlocks));
+		int half = thick / 2;
+		int steps = (int) Math.max(48, Math.min(360, Math.round(Math.PI * 2 * radius / Math.max(1, thick * 0.7))));
 		int cx = (int) Math.round(centre[0]);
 		int cy = (int) Math.round(centre[1]);
-		double radius = above == null ? 7 : Math.hypot(above[0] - centre[0], above[1] - centre[1]);
-		radius = Math.max(7, Math.min(120, radius));
-		int steps = (int) Math.max(24, Math.min(90, Math.round(radius * 1.6)));
 		for (int i = 0; i < steps; i++) {
 			double angle = Math.PI * 2 * i / steps;
 			int px = cx + (int) Math.round(Math.cos(angle) * radius);
 			int py = cy + (int) Math.round(Math.sin(angle) * radius);
-			graphics.fill(px - 2, py - 2, px + 2, py + 2, OUTLINE_COLOR);
-			graphics.fill(px - 1, py - 1, px + 1, py + 1, dragon.color());
+			graphics.fill(px - half, py - half, px - half + thick, py - half + thick, INDICATOR_COLOR);
 		}
-		graphics.fill(cx - 2, cy - 2, cx + 2, cy + 2, OUTLINE_COLOR);
-		graphics.fill(cx - 1, cy - 1, cx + 1, cy + 1, 0xFFFFFFFF);
-		graphics.text(font, dragon.name(), cx - font.width(dragon.name()) / 2, (int) Math.round(cy + radius) + 4, dragon.color(), true);
+	}
+
+	// ---- dragon states (the same checks as NoammAddons' DragonCheck) ----
+
+	private static void resetStates() {
+		for (Dragon dragon : DRAGONS) {
+			dragon.state = State.DEAD;
+			dragon.timeToSpawn = 100;
+		}
+	}
+
+	/** The flame particles of a dragon statue (only these exact ones): the dragon starts to spawn. */
+	public static void onParticles(net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket packet) {
+		if (!Minecraft.getInstance().isSameThread() || !ParzConfigDefinition.DRAGON_CIRCLES.isEnabled()) {
+			return;
+		}
+		if (packet.getParticle().getType() != net.minecraft.core.particles.ParticleTypes.FLAME) return;
+		if (packet.getX() % 1 != 0.0 || packet.getZ() % 1 != 0.0) return;
+		if (packet.getCount() != 20 || packet.getY() != 19.0) return;
+		if (packet.getMaxSpeed() != 0f || !packet.isOverrideLimiter()) return;
+		if (packet.getXDist() != 2f || packet.getYDist() != 3f || packet.getZDist() != 2f) return;
+		for (Dragon dragon : DRAGONS) {
+			if (dragon.state != State.SPAWNING) {
+				if (packet.getX() < dragon.pMinX || packet.getX() > dragon.pMaxX
+						|| packet.getZ() < dragon.pMinZ || packet.getZ() > dragon.pMaxZ) {
+					continue;
+				}
+				dragon.state = State.SPAWNING;
+				dragon.timeToSpawn = 100;
+				net.parz.Debug.log("dragons", () -> dragon.name + " dragon is spawning");
+			}
+		}
+	}
+
+	/** The dragon itself appears: it is alive, the indicator ends. */
+	public static void onEntity(net.minecraft.network.protocol.game.ClientboundAddEntityPacket packet) {
+		if (!Minecraft.getInstance().isSameThread() || packet.getType() != net.minecraft.world.entity.EntityTypes.ENDER_DRAGON) {
+			return;
+		}
+		for (Dragon dragon : DRAGONS) {
+			if (dragon.state == State.SPAWNING && packet.getX() >= dragon.minX && packet.getX() <= dragon.maxX
+					&& packet.getZ() >= dragon.minZ && packet.getZ() <= dragon.maxZ) {
+				dragon.state = State.ALIVE;
+				dragon.timeToSpawn = 100;
+				net.parz.Debug.log("dragons", () -> dragon.name + " dragon is alive");
+				return;
+			}
+		}
+	}
+
+	/** Counts the spawn timer down (once per tick, like the server); a dragon that never appears is dropped. */
+	private static void tick(Minecraft client) {
+		for (Dragon dragon : DRAGONS) {
+			if (dragon.state == State.SPAWNING) {
+				dragon.timeToSpawn--;
+				if (dragon.timeToSpawn <= -20) {
+					dragon.state = State.DEAD;
+					dragon.timeToSpawn = 100;
+				}
+			}
+		}
 	}
 }

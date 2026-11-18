@@ -5,7 +5,8 @@
 	"client": [
 		"BlindnessFogMixin",
 		"SkyBlockMenuMixin",
-		"PetsMenuMixin"
+		"PetsMenuMixin",
+		"DragonPacketsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

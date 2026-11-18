@@ -89,8 +89,8 @@ public final class ParzConfigDefinition {
 
 	public static final Toggle DRAGON_CIRCLES = DUNGEONS.toggle(
 			"dungeons.dragon_circles",
-			"M7 Dragon Circles",
-			"Only in the Master Mode 7 boss fight (dragon phase): a circle on the neck of each of the 5 dragons. The circles are fixed in the world and stay, also before a dragon spawns.",
+			"M7 Dragon Arrow Stack",
+			"Only in the Master Mode 7 boss fight (dragon phase): while a dragon spawns, a cyan ring shows where to aim your bow for the arrow stack (the arrow drop is included). Same positions and calculation as the Wither Dragons feature of NoammAddons.",
 			true);
 
 	// ---- Crystal Hollows -----------------------------------------------------------------
