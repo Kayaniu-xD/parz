@@ -88,6 +88,8 @@ public final class FishingPuzzle {
 	private static Creature active = null;
 	private static long activeSince = 0;
 	private static boolean seenTag = false;
+	/** True when YOU spawned the creature (its spawn message) or hurt it (your hit, your damage numbers). */
+	private static boolean mine = false;
 	private static double lastDistance = 0;
 	private static long lastSeenTag = 0;
 	/** When the drops are complete and the board is shown (0 = not decided yet). */
@@ -129,6 +131,26 @@ public final class FishingPuzzle {
 			}
 		}));
 		ClientTickEvents.END_CLIENT_TICK.register(Debug.tick("fishing tick", FishingPuzzle::tick));
+		// your own hit on one of the creatures
+		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+			try {
+				if (enabled() && level.isClientSide()) {
+					Component component = entity.hasCustomName() && entity.getCustomName() != null ? entity.getCustomName() : entity.getName();
+					Creature creature = creatureOfTag(FORMATTING.matcher(component.getString()).replaceAll("").toLowerCase(Locale.ROOT));
+					if (creature != null) {
+						if (active == null) {
+							startWatching(creature, System.currentTimeMillis());
+						}
+						if (active == creature) {
+							mine = true;
+						}
+					}
+				}
+			} catch (RuntimeException e) {
+				Debug.error("fishing attack", e);
+			}
+			return net.minecraft.world.InteractionResult.PASS;
+		});
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
 				Identifier.fromNamespaceAndPath("parz", "fishing_puzzle"),
 				Debug.hud("fishing puzzle", FishingPuzzle::render));
@@ -147,7 +169,8 @@ public final class FishingPuzzle {
 		for (Creature creature : CREATURES) {
 			if (lower.contains(creature.announcement())) {
 				startWatching(creature, System.currentTimeMillis());
-				Debug.log("fishing", () -> creature.title() + " spawned, waiting for its death");
+				mine = true; // the spawn message is only sent to the one who fished it up
+				Debug.log("fishing", () -> creature.title() + " spawned by you, waiting for its death");
 				return;
 			}
 		}
@@ -200,6 +223,8 @@ public final class FishingPuzzle {
 			scanTick = 0;
 			Creature seen = null;
 			double distance = 0;
+			net.minecraft.world.phys.Vec3 creaturePos = null;
+			List<net.minecraft.world.phys.Vec3> numbers = new ArrayList<>();
 			for (Entity entity : client.level.entitiesForRendering()) {
 				if (entity instanceof net.minecraft.world.entity.item.ItemEntity || entity instanceof net.minecraft.world.entity.player.Player) {
 					continue;
@@ -207,12 +232,17 @@ public final class FishingPuzzle {
 				// the name tag, or the name of the mob itself
 				Component component = entity.hasCustomName() && entity.getCustomName() != null ? entity.getCustomName() : entity.getName();
 				String name = FORMATTING.matcher(component.getString()).replaceAll("").toLowerCase(Locale.ROOT);
+				// a new floating number next to a mob: damage that you did (the server only shows you your own)
+				if (entity.tickCount <= 40 && DAMAGE_NUMBER.matcher(name).matches()) {
+					numbers.add(entity.position());
+				}
 				Creature creature = creatureOfTag(name);
 				if (creature != null && (active == null || creature == active)) {
 					double d = entity.distanceTo(client.player);
 					if (seen == null || d < distance) {
 						seen = creature;
 						distance = d;
+						creaturePos = entity.position();
 					}
 				}
 			}
@@ -225,6 +255,15 @@ public final class FishingPuzzle {
 				seenTag = true;
 				lastSeenTag = now;
 				lastDistance = distance;
+				if (!mine && creaturePos != null) {
+					for (net.minecraft.world.phys.Vec3 number : numbers) {
+						if (number.distanceToSqr(creaturePos) <= 14 * 14) {
+							mine = true;
+							Debug.log("fishing", () -> "your damage numbers on " + found().title() + ": the creature is yours");
+							break;
+						}
+					}
+				}
 			} else if (active != null && seenTag && now - lastSeenTag > DEATH_GRACE_MS && showAt == 0) {
 				if (lastDistance <= MAX_KILL_DISTANCE || !got.isEmpty()) {
 					showAt = now + DROP_WINDOW_MS;
@@ -259,6 +298,12 @@ public final class FishingPuzzle {
 		}
 		inventory = current;
 		if (showAt != 0 && now >= showAt) {
+			if (!mine) {
+				Debug.log("fishing", () -> active.title() + " died, but you did not spawn it or hurt it: no memory");
+				active = null;
+				showAt = 0;
+				return;
+			}
 			Creature creature = active;
 			Set<Loot> result = new HashSet<>(got);
 			active = null;
@@ -267,11 +312,16 @@ public final class FishingPuzzle {
 		}
 	}
 
+	private static Creature found() {
+		return active != null ? active : CREATURES.get(0);
+	}
+
 	private static void startWatching(Creature creature, long now) {
 		active = creature;
 		activeSince = now;
 		seenTag = false;
 		showAt = 0;
+		mine = false;
 		got.clear();
 		inventory = null;
 	}
@@ -279,6 +329,8 @@ public final class FishingPuzzle {
 	/** Part of a name tag that only a living mob has: its level "[Lv597]", its health "419M/600M" or the heart. */
 	private static final Pattern MOB_TAG = Pattern.compile("lv\\s*\\d+|\\d[kmb]?\\s*/\\s*\\d|❤");
 	private static final Set<String> LOGGED_NAMES = new HashSet<>();
+	/** A floating damage number: "1,234", "✧1,234✧", "12.5k" with symbols around it, nothing else. */
+	private static final Pattern DAMAGE_NUMBER = Pattern.compile("^[^a-z0-9]*[0-9][0-9,.]*[kmb]?[^a-z0-9/]*$");
 
 	/**
 	 * The creature of a name tag (lower case, colors removed), or null. The tag does not always look the same
