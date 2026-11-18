@@ -238,11 +238,19 @@ public final class PetsView {
 		int top = frame.pgY1() + 30;
 		int bottom = frame.pgY2() - 20;
 		int view = bottom - top;
-		listMaxScroll = Math.max(0, pets.size() * ROW_STEP - view);
+		// the equipped pet is on its own at the top, below the heading "Equipped Pet"
+		boolean hasEquipped = !pets.isEmpty() && isActive(pets.getFirst().stack());
+		int headerH = hasEquipped ? 12 : 0;
+		int separatorH = hasEquipped && pets.size() > 1 ? 8 : 0;
+		listMaxScroll = Math.max(0, pets.size() * ROW_STEP + headerH + separatorH - view);
 		listScroll = clamp(listScroll, 0, listMaxScroll);
 
 		graphics.enableScissor(x1 - 1, top, x2 + 1, bottom);
 		int y = top + 1 - (int) listScroll;
+		if (hasEquipped) {
+			graphics.text(font, "Equipped Pet", x1 + 2, y + 2, BookStyle.TEXT_DIM, true);
+			y += headerH;
+		}
 		boolean mouseInList = mouseX >= x1 && mouseX < x2 && mouseY >= top && mouseY < bottom;
 		// columns: icon | level | name | favourite star | active gem
 		int levelW = 0;
@@ -290,6 +298,10 @@ public final class PetsView {
 				}
 			}));
 			y += ROW_STEP;
+			if (hasEquipped && pet == pets.getFirst() && separatorH > 0) {
+				BookStyle.footerDivider(graphics, x1, x2 - 6, y + 1);
+				y += separatorH;
+			}
 		}
 		graphics.disableScissor();
 		BookStyle.drawScrollbar(graphics, x2 - 2, top, bottom, view, listScroll, listMaxScroll);
