@@ -122,6 +122,7 @@ public class DashboardScreen extends Screen {
 		fixedHits.clear();
 		contentHits.clear();
 
+		Mascot.draw(graphics, px, py, ph);
 		graphics.fill(px, py, px + pw, py + ph, PANEL_BG);
 		graphics.outline(px, py, pw, ph, PANEL_BORDER);
 

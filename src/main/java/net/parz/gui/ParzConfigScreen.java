@@ -189,6 +189,7 @@ public class ParzConfigScreen extends Screen {
 		contentHits.clear();
 		tabHits.clear();
 
+		Mascot.draw(graphics, px, py, ph);
 		drawTabs(graphics, mouseX, mouseY);
 		drawBook(graphics);
 		drawLeftPage(graphics, mouseX, mouseY, delta);

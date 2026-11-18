@@ -218,6 +218,7 @@ public final class PetsView {
 		}
 
 		graphics.fill(0, 0, screen.width, screen.height, 0xA0000000);
+		Mascot.draw(graphics, frame.px(), frame.py(), frame.ph());
 		BookStyle.drawBook(graphics, frame);
 		if (collectionMode) {
 			drawCollectionLeft(graphics, font, mouseX, mouseY);
