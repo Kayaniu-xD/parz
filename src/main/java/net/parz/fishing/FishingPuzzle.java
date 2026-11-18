@@ -57,12 +57,14 @@ public final class FishingPuzzle {
 					new Loot("Magma Lord Fragment", "1x", "50%", 50, "magma lord fragment"),
 					new Loot("Bobbin' Scriptures", "1x", "2.5%", 2.5, "bobbin' scriptures", "bobbin scriptures"),
 					new Loot("Radioactive Vial", "1x", "1.25%", 1.25, "radioactive vial"),
-					new Loot("Carmine Dye", "1x", "0.004%", 0.004, "carmine dye"))),
+					new Loot("Carmine Dye", "1x", "0.004%", 0.004, "carmine dye"),
+					new Loot("Lord Jawbus Shard", "1x", "Charm", 10, "lord jawbus shard"))),
 			new Creature("thunder", "Thunder", "thunder emerges", "thunder", 0xFF55FFFF, List.of(
 					new Loot("Silver Magmafish", "4x", "100%", 100, "silver magmafish"),
 					new Loot("Thunder Fragment", "1x", "50%", 50, "thunder fragment"),
 					new Loot("Enchanted Book (Flash I)", "1x", "4%", 4, "flash"),
-					new Loot("Carmine Dye", "1x", "0.002%", 0.002, "carmine dye"))),
+					new Loot("Carmine Dye", "1x", "0.002%", 0.002, "carmine dye"),
+					new Loot("Thunder Shard", "1x", "Charm", 10, "thunder shard"))),
 			new Creature("ragnarok", "Ragnarok", "ragnarok is here", "ragnarok", 0xFFFFAA00, List.of(
 					new Loot("Enchanted Magma Cream", "8x", "100%", 100, "enchanted magma cream"),
 					new Loot("Enchanted Coal", "8x", "100%", 100, "enchanted coal"),
@@ -149,7 +151,8 @@ public final class FishingPuzzle {
 				return;
 			}
 		}
-		if (active != null && lower.contains("drop!")) {
+		// "... DROP!" lines, and the charm message that names the shard
+		if (active != null && (lower.contains("drop!") || lower.contains("shard"))) {
 			Loot loot = match(active, lower);
 			if (loot != null) {
 				gotLoot(loot, "chat: " + text);

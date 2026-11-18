@@ -87,7 +87,8 @@ public final class ItemIcons {
 
 	/** Items whose picture has another name on the wiki than the item itself. */
 	private static final Map<String, String> ALIASES = Map.of(
-			"enchanted coal block", "Enchanted Block of Coal");
+			"enchanted coal block", "Enchanted Block of Coal",
+			"thunder shard", "Thunder Head");
 
 	private static boolean fetch(String name) throws Exception {
 		Path target = file(name);
