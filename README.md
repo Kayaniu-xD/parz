@@ -98,9 +98,11 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   in your game and recognises each room by its blocks. The entrance is always at the bottom. Rooms show their name
   and the number of secrets, and their state (not entered / entered / cleared / completed / failed). A footer shows
   score, secrets, crypts and deaths. Move and resize the map with `/pz hud`.
-- **M7 Dragon Circles**: in the dragon phase of the Master Mode 7 boss fight, a circle is drawn on the neck of each
-  of the five dragons. The circles are fixed in the world and stay for the rest of the fight. If they disappear
-  anyway, the chat says why.
+- **M7 Dragon Arrow Stack**: in the dragon phase of the Master Mode 7 boss fight, a cyan ring appears while a dragon
+  is spawning. It shows where to aim your bow so that the arrow lands on the stack position of that dragon, with the
+  drop of the arrow included. The ring always faces you, is visible through walls and gets bigger with the distance.
+  The positions and the calculation are the ones of the Wither Dragons feature of
+  [NoammAddons](https://github.com/Noamm9/NoammAddons).
 
 ### Crystal Hollows
 - **Nucleus Slot Machine**: when you place all crystals and the loot bundle of the Crystal Nucleus appears in the
