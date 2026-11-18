@@ -40,6 +40,7 @@ Parz updates itself from the GitHub releases.
 | `/pz hud` | Opens the HUD editor to move and resize the HUD elements |
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
+| `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -111,6 +112,13 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   chat, a slot machine with three reels spins on your screen and stops on the rarest item you got (rated with the loot
   table of the SkyBlock wiki). If you got a Divan's Alloy, all three reels stop on the alloy, like three sevens.
   Try it with `/pz nucleus` or `/pz nucleus alloy`.
+
+### Fishing
+- **Loot Memory**: when Lord Jawbus, Thunder or Ragnarok is dead, a memory board with all the loot it can drop
+  appears on your screen, all cards face up. Then every card of an item you did **not** get is turned around; the
+  cards of your drops stay open and glow. Parz knows the creature from its spawn message, sees it die when its name
+  tag disappears, and reads your drops from the "DROP!" chat lines and from the items that arrive in your
+  inventory. Try it with `/pz fishing`.
 
 ### Other
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
