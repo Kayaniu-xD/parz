@@ -40,6 +40,7 @@ Parz updates itself from the GitHub releases.
 | `/pz hud` | Opens the HUD editor to move and resize the HUD elements |
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
 | `/pz update` | Installs the newest version from GitHub |
+| `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
 ## How it works
 
