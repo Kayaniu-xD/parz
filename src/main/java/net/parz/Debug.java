@@ -59,7 +59,7 @@ public final class Debug {
 		Minecraft client = Minecraft.getInstance();
 		client.execute(() -> {
 			if (client.player != null) {
-				client.player.sendSystemMessage(Component.literal("[Debug] ").withStyle(ChatFormatting.DARK_GRAY)
+				sendOwn(client, Component.literal("[Debug] ").withStyle(ChatFormatting.DARK_GRAY)
 						.append(Component.literal("[" + category + "] ").withStyle(ChatFormatting.YELLOW))
 						.append(Component.literal(line.substring(category.length() + 3)).withStyle(ChatFormatting.GRAY)));
 			}
@@ -122,7 +122,7 @@ public final class Debug {
 		Minecraft client = Minecraft.getInstance();
 		client.execute(() -> {
 			if (client.player != null) {
-				lines.forEach(client.player::sendSystemMessage);
+				lines.forEach(line -> sendOwn(client, line));
 			}
 		});
 	}
@@ -148,7 +148,31 @@ public final class Debug {
 	}
 
 	public static ClientReceiveMessageEvents.Game message(String where, ClientReceiveMessageEvents.Game handler) {
-		return (message, overlay) -> guard(where, () -> handler.onReceiveGameMessage(message, overlay));
+		return (message, overlay) -> {
+			// the debug lines Parz writes into the chat itself must never be read as game messages: they quote
+			// what Parz saw (for example a dungeon floor), so reading them again made an endless loop
+			if (isOwnMessage(message.getString())) {
+				return;
+			}
+			guard(where, () -> handler.onReceiveGameMessage(message, overlay));
+		};
+	}
+
+	private static boolean sendingOwn = false;
+
+	/** Sends a line of Parz to the chat and remembers that it is not a message of the server. */
+	private static void sendOwn(Minecraft client, Component line) {
+		sendingOwn = true;
+		try {
+			client.player.sendSystemMessage(line);
+		} finally {
+			sendingOwn = false;
+		}
+	}
+
+	/** True for the lines Parz writes into the chat itself (debug lines, errors). */
+	public static boolean isOwnMessage(String text) {
+		return sendingOwn || text.startsWith("[Debug]") || text.startsWith("    at ") || text.startsWith("    caused by");
 	}
 
 	public static net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement hud(String where,
@@ -207,7 +231,10 @@ public final class Debug {
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
 				log("screen", () -> "opened " + screen.getClass().getSimpleName() + " \""
 						+ FORMATTING.matcher(screen.getTitle().getString()).replaceAll("") + "\""));
-		ClientReceiveMessageEvents.GAME.register((message, overlay) ->
-				file(overlay ? "actionbar" : "chat", () -> FORMATTING.matcher(message.getString()).replaceAll("")));
+		ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+			if (!isOwnMessage(message.getString())) {
+				file(overlay ? "actionbar" : "chat", () -> FORMATTING.matcher(message.getString()).replaceAll(""));
+			}
+		});
 	}
 }
