@@ -213,7 +213,7 @@ public final class DungeonMap {
 		}
 	}
 
-	/** Lines for /parz dungeon: what the scan sees right now. */
+	/** Lines for /pz dungeon: what the scan sees right now. */
 	public static List<String> debug(Minecraft client) {
 		List<String> out = new ArrayList<>();
 		out.add("features active: " + SkyBlockDetector.featuresActive() + " (on SkyBlock: " + SkyBlockDetector.isOnSkyBlock() + ")");
@@ -756,7 +756,7 @@ public final class DungeonMap {
 		}
 	}
 
-	/** A few sample rooms so you can place the map with /parz hud before a run. */
+	/** A few sample rooms so you can place the map with /pz hud before a run. */
 	private static void drawSample(GuiGraphicsExtractor graphics, Font font, int originX, int originY) {
 		String[][] layout = {{"Puzzle", "Atlas", "Atlas", "Fairy"}, {"Trap", "Hall", "", "Blood"}, {"", "Entrance", "", ""}};
 		int[] colors = {0xFF7A1F91, 0xFF4E2D12, 0xFF4E2D12, 0xFFA21FB5};
@@ -780,7 +780,7 @@ public final class DungeonMap {
 				drawSmall(graphics, font, label, rx + ROOM / 2, ry + ROOM / 2 - 3, TEXT_NAME, 0.5f);
 			}
 		}
-		drawSmall(graphics, font, "Move me with /parz hud", originX + (viewCols * PITCH - GAP) / 2, originY + 3 * PITCH + 2, TEXT_DIM, 0.6f);
+		drawSmall(graphics, font, "Move me with /pz hud", originX + (viewCols * PITCH - GAP) / 2, originY + 3 * PITCH + 2, TEXT_DIM, 0.6f);
 	}
 
 	// ---- small drawing helpers ----

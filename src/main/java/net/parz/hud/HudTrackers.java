@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Draws the trackers you pinned in /parz-dash on the HUD.
+ * Draws the trackers you pinned in /pz dash on the HUD.
  */
 public final class HudTrackers {
 	public static final String MAP_KEY = "dungeon_map";

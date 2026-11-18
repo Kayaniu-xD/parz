@@ -13,7 +13,7 @@ import net.parz.skyblock.SkyBlockDetector;
 
 /**
  * The Parz button in the /skyblockmenu: it replaces the glass pane in the top left slot.
- * A click opens the /parz menu (the click is not sent to the server).
+ * A click opens the /pz menu (the click is not sent to the server).
  */
 public final class SkyBlockMenuButton {
 	/** Menu slot that is replaced (0 = top left corner of the chest menu). */

@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * SkyBlock Personal Dashboard (/parz-dash): a card grid for all skills and
+ * SkyBlock Personal Dashboard (/pz dash): a card grid for all skills and
  * collections (data from the tab list and /collection), plus stats.
  * Clicking a card pins it to the HUD.
  */
@@ -166,7 +166,7 @@ public class DashboardScreen extends Screen {
 
 		// footer hint
 		String hint = grid
-				? "Click a card to pin/unpin it on your HUD  -  /parz hud to move HUD trackers"
+				? "Click a card to pin/unpin it on your HUD  -  /pz hud to move HUD trackers"
 				: "Stats are saved automatically";
 		graphics.text(font, trim(hint, pw - 16), px + 8, py + ph - 13, TEXT_DIM, true);
 	}

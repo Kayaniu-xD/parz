@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The categories and options shown in the /parz menu.
+ * The categories and options shown in the /pz menu.
  */
 public final class ParzConfigDefinition {
 	public static final List<Category> CATEGORIES = new ArrayList<>();
@@ -40,7 +40,7 @@ public final class ParzConfigDefinition {
 			true);
 
 	// ---- Dashboard & HUD ---------------------------------------------------------
-	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/parz-dash) and HUD trackers (/parz hud).");
+	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/pz dash) and HUD trackers (/pz hud).");
 
 	public static final Toggle SKILL_XP_PER_HOUR = DASHBOARD.toggle(
 			"dashboard.skill_xp_per_hour",
@@ -51,7 +51,7 @@ public final class ParzConfigDefinition {
 	public static final Toggle HUD_TRACKERS = DASHBOARD.toggle(
 			"dashboard.hud_trackers",
 			"HUD Trackers",
-			"Shows the skills and collections you pinned in /parz-dash on your screen. Move them with /parz hud.",
+			"Shows the skills and collections you pinned in /pz dash on your screen. Move them with /pz hud.",
 			true);
 
 	public static final Toggle LIVE_COLLECTIONS = DASHBOARD.toggle(
@@ -72,7 +72,7 @@ public final class ParzConfigDefinition {
 	public static final Toggle DUNGEON_MAP = DUNGEONS.toggle(
 			"dungeons.map",
 			"Dungeon Map",
-			"Shows every room of the dungeon on your screen from the start, found by reading the blocks that are already loaded in your game (nothing is sent to the server). The entrance is always at the bottom. Move and resize it with /parz hud.",
+			"Shows every room of the dungeon on your screen from the start, found by reading the blocks that are already loaded in your game (nothing is sent to the server). The entrance is always at the bottom. Move and resize it with /pz hud.",
 			true);
 
 	public static final Toggle DUNGEON_MAP_NAMES = DUNGEONS.toggle(

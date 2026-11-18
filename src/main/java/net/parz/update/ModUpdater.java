@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 import java.util.zip.ZipFile;
 
 /**
- * /parz update: loads the newest release from GitHub and exchanges the mod jar in the mods folder.
+ * /pz update: loads the newest release from GitHub and exchanges the mod jar in the mods folder.
  *
  * The running jar is locked on Windows, so the new version is downloaded as "parz-x.y.z.jar.new"
  * (Fabric ignores it) and swapped in when Minecraft closes. If anything fails the old jar stays.
@@ -101,7 +101,7 @@ public final class ModUpdater {
 
 	// ---- entry points ------------------------------------------------------------------
 
-	/** Checks for a new version when the game starts (if enabled in /parz > Update). */
+	/** Checks for a new version when the game starts (if enabled in /pz > Update). */
 	public static void checkOnStartup() {
 		cleanupLeftovers();
 		if (ParzConfigDefinition.UPDATE_CHECK.isEnabled()) {
@@ -148,7 +148,7 @@ public final class ModUpdater {
 		});
 	}
 
-	/** /parz update */
+	/** /pz update */
 	public static void run(FabricClientCommandSource source) {
 		install(component -> source.sendFeedback(component));
 	}

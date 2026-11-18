@@ -64,7 +64,7 @@ public final class DragonMarkers {
 				DragonMarkers::render);
 	}
 
-	/** Lines for /parz dungeon. */
+	/** Lines for /pz dungeon. */
 	public static List<String> debug(Minecraft client) {
 		List<String> lines = new ArrayList<>();
 		lines.add("dragon markers setting: " + ParzConfigDefinition.DRAGON_CIRCLES.isEnabled());

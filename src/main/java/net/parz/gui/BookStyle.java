@@ -5,7 +5,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 /**
- * The dark open-book design that /parz and the custom /pets menu share: cover, two pages with a shadow
+ * The dark open-book design that /pz and the custom /pets menu share: cover, two pages with a shadow
  * at the spine, page stack, ornaments, ribbon, page titles, dividers and plates.
  */
 public final class BookStyle {
@@ -175,7 +175,7 @@ public final class BookStyle {
 		graphics.fill(cx, cy - 1, cx + 1, cy, 0x66FFFFFF);
 	}
 
-	/** A button / list plate like the category rows of /parz. */
+	/** A button / list plate like the category rows of /pz. */
 	public static void plate(GuiGraphicsExtractor graphics, int x1, int y1, int x2, int y2, boolean selected, boolean hovered, boolean enabled) {
 		int bg = !enabled ? 0xFF222328 : selected ? PLATE_SELECTED : hovered ? PLATE_HOVER : PLATE;
 		graphics.fill(x1, y1, x2, y2, bg);

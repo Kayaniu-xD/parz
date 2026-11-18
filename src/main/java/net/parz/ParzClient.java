@@ -56,7 +56,7 @@ public class ParzClient implements ClientModInitializer {
 		ModUpdater.checkOnStartup();
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) -> {
-			dispatcher.register(ClientCommands.literal("parz")
+			dispatcher.register(ClientCommands.literal("pz")
 					.executes(context -> {
 						screenToOpen = ParzConfigScreen::new;
 						return 1;
@@ -73,14 +73,14 @@ public class ParzClient implements ClientModInitializer {
 							}
 							return 1;
 						}))
+						.then(ClientCommands.literal("dash").executes(context -> {
+							screenToOpen = DashboardScreen::new;
+							return 1;
+						}))
 						.then(ClientCommands.literal("update").executes(context -> {
-						ModUpdater.run(context.getSource());
-						return 1;
-					})));
-			dispatcher.register(ClientCommands.literal("parz-dash").executes(context -> {
-				screenToOpen = DashboardScreen::new;
-				return 1;
-			}));
+							ModUpdater.run(context.getSource());
+							return 1;
+						})));
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -98,7 +98,7 @@ public class ParzClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> saveAll());
 		Runtime.getRuntime().addShutdownHook(new Thread(ParzClient::saveAll, "parz-save"));
 
-		LOGGER.info("Parz loaded - use /parz, /parz hud, /parz update and /parz-dash");
+		LOGGER.info("Parz loaded - use /pz, /pz hud, /pz update and /pz dash");
 	}
 
 	/** Writes the settings and the dashboard data (skills, collections, playtime, HUD) to disk. */

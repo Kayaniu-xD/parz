@@ -10,7 +10,7 @@ import net.parz.hud.HudTrackers;
 import java.util.List;
 
 /**
- * /parz hud - drag the pinned HUD trackers to where you want them.
+ * /pz hud - drag the pinned HUD trackers to where you want them.
  */
 public class HudEditorScreen extends Screen {
 	private static final int GRID = 20;      // distance between two grid lines
@@ -73,7 +73,7 @@ public class HudEditorScreen extends Screen {
 		String title = "Parz HUD Editor";
 		graphics.text(font, title, (this.width - font.width(title)) / 2, this.height / 2 - 30, 0xFFA87BFF, true);
 		String hint = pinned.isEmpty()
-				? "Nothing to move. Pin a skill or collection in /parz-dash, or turn on the Dungeon Map."
+				? "Nothing to move. Pin a skill or collection in /pz dash, or turn on the Dungeon Map."
 				: "Drag to move (it snaps to the grid and the middle lines), scroll to resize. Press ESC to save.";
 		graphics.text(font, hint, (this.width - font.width(hint)) / 2, this.height / 2 - 16, 0xFFE0E0E0, true);
 

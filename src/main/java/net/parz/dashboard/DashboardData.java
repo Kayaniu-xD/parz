@@ -53,7 +53,7 @@ public final class DashboardData {
 	public List<String> hudPinned = new ArrayList<>();
 	/** HUD positions per tracker key: [x, y]. */
 	public Map<String, int[]> hudPositions = new HashMap<>();
-	/** HUD size per tracker key (1.0 = normal), changed with the mouse wheel in /parz hud. */
+	/** HUD size per tracker key (1.0 = normal), changed with the mouse wheel in /pz hud. */
 	public Map<String, Float> hudScales = new HashMap<>();
 	/** Summary per category from the main /collections menu, e.g. "Maxed 12/17 - Unlocked 100%". */
 	public Map<String, String> categorySummary = new HashMap<>();

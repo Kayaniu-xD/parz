@@ -19,7 +19,7 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 /**
- * The /parz menu as a dark, open book.
+ * The /pz menu as a dark, open book.
  * Left page: category list with search. Right page: the options of the selected category.
  * The tabs on the right edge of the book lead to the dashboard and the HUD editor.
  */

@@ -3,7 +3,7 @@
 	"id": "parz",
 	"version": "${version}",
 	"name": "Parz",
-	"description": "Client-side utility mod with a categorized config menu. Open it with /parz.",
+	"description": "Client-side utility mod with a categorized config menu. Open it with /pz.",
 	"authors": [
 		"Pay2Loze"
 	],
