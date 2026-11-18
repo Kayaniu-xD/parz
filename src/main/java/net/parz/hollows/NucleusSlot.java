@@ -321,7 +321,7 @@ public final class NucleusSlot {
 		}
 		Minecraft client = Minecraft.getInstance();
 		long t = System.currentTimeMillis() - startMs;
-		if (t > endMs + 500) {
+		if (t > endMs + 250) {
 			playing = false;
 			return;
 		}
@@ -331,10 +331,10 @@ public final class NucleusSlot {
 
 		// slides in from the top and out again
 		double slide = 1.0;
-		if (t < 400) {
-			slide = easeOut(t / 400.0);
+		if (t < 150) {
+			slide = easeOut(t / 150.0);
 		} else if (t > endMs) {
-			slide = 1.0 - easeOut((t - endMs) / 500.0);
+			slide = 1.0 - easeOut((t - endMs) / 250.0);
 		}
 		int x = (screenW - PANEL_W) / 2;
 		// in the middle of the screen; it comes in from the top

@@ -106,9 +106,9 @@ public final class FishingPuzzle {
 	private static final int CARD_H = 66;
 	private static final int GAP = 6;
 	private static final int MAX_COLUMNS = 5;
-	private static final long SHOW_ALL_MS = 1500;
-	private static final long FLIP_STEP_MS = 260;
-	private static final long FLIP_MS = 500;
+	private static final long SHOW_ALL_MS = 700;
+	private static final long FLIP_STEP_MS = 170;
+	private static final long FLIP_MS = 350;
 
 	private FishingPuzzle() {
 	}
@@ -336,7 +336,7 @@ public final class FishingPuzzle {
 			return;
 		}
 		long t = System.currentTimeMillis() - startMs;
-		if (t > endMs + 500) {
+		if (t > endMs + 250) {
 			playing = false;
 			return;
 		}
@@ -352,10 +352,10 @@ public final class FishingPuzzle {
 		int panelH = 34 + rows * CARD_H + (rows - 1) * GAP + 34;
 
 		double slide = 1.0;
-		if (t < 400) {
-			slide = easeOut(t / 400.0);
+		if (t < 150) {
+			slide = easeOut(t / 150.0);
 		} else if (t > endMs) {
-			slide = 1.0 - easeOut((t - endMs) / 500.0);
+			slide = 1.0 - easeOut((t - endMs) / 250.0);
 		}
 		float scale = (float) Math.min(1.6, Math.min(screenH * 0.8 / panelH, screenW * 0.9 / panelW));
 		int x = (screenW - panelW) / 2;
