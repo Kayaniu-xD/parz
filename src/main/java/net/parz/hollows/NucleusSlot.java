@@ -79,6 +79,7 @@ public final class NucleusSlot {
 	}
 
 	public static void register() {
+		ItemIcons.load();
 		ClientReceiveMessageEvents.GAME.register(Debug.message("nucleus chat", (message, overlay) -> {
 			if (!overlay && enabled()) {
 				onMessage(message);
@@ -331,7 +332,8 @@ public final class NucleusSlot {
 			slide = 1.0 - easeOut((t - endMs) / 500.0);
 		}
 		int x = (screenW - PANEL_W) / 2;
-		int y = (int) Math.round(screenH * 0.14 - (1.0 - slide) * (PANEL_H + 40));
+		// in the middle of the screen; it comes in from the top
+		int y = (int) Math.round((screenH - PANEL_H) / 2.0 - (1.0 - slide) * ((screenH + PANEL_H) / 2.0 + 10));
 
 		long flash = t / 140;
 		boolean allReelsStopped = stopped[0] && stopped[1] && stopped[2];
@@ -455,6 +457,11 @@ public final class NucleusSlot {
 	// ======================================================================================
 
 	private static ItemStack iconFor(String name) {
+		// the real SkyBlock texture (the model of the server resource pack or the head of the item)
+		ItemStack real = ItemIcons.stackFor(name);
+		if (real != null) {
+			return real;
+		}
 		String n = name.toLowerCase(Locale.ROOT);
 		ItemStack stack;
 		if (n.contains("alloy")) {
