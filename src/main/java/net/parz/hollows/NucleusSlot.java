@@ -338,7 +338,14 @@ public final class NucleusSlot {
 		}
 		int x = (screenW - PANEL_W) / 2;
 		// in the middle of the screen; it comes in from the top
-		int y = (int) Math.round((screenH - PANEL_H) / 2.0 - (1.0 - slide) * ((screenH + PANEL_H) / 2.0 + 10));
+		int y = (int) Math.round((screenH - PANEL_H) / 2.0 - (1.0 - slide) * ((screenH + PANEL_H * 1.8) / 2.0 + 10));
+
+		// the whole machine is drawn bigger, around its own middle (so it stays in the middle of the screen)
+		float scale = (float) Math.min(1.8, Math.min(screenH * 0.8 / PANEL_H, screenW * 0.9 / PANEL_W));
+		graphics.pose().pushMatrix();
+		graphics.pose().translate(x + PANEL_W / 2f, y + PANEL_H / 2f);
+		graphics.pose().scale(scale, scale);
+		graphics.pose().translate(-(x + PANEL_W / 2f), -(y + PANEL_H / 2f));
 
 		long flash = t / 140;
 		boolean allReelsStopped = stopped[0] && stopped[1] && stopped[2];
@@ -381,6 +388,7 @@ public final class NucleusSlot {
 				sparkles(graphics, x + PANEL_W / 2, y + PANEL_H / 2, t);
 			}
 		}
+		graphics.pose().popMatrix();
 	}
 
 	private static void drawReel(GuiGraphicsExtractor graphics, int reel, int rx, int ry, long t) {
