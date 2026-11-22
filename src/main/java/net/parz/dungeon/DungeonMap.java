@@ -526,6 +526,10 @@ public final class DungeonMap {
 		if (!enabled() || !DungeonInfo.inCatacombs() || client.gui.screen() instanceof HudEditorScreen) {
 			return;
 		}
+		// the boss room is at positive coordinates (the rooms of the dungeon are at negative ones): the map is not needed there
+		if (client.player != null && client.player.getX() > 0 && client.player.getZ() > 0) {
+			return;
+		}
 		int[] pos = HudTrackers.position(HudTrackers.MAP_KEY, 0,
 				client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
 		HudTrackers.draw(graphics, client.font, HudTrackers.MAP_KEY, pos[0], pos[1]);
