@@ -17,7 +17,7 @@ import java.util.List;
  */
 public class NameScreen extends Screen {
 	private static final int PANEL_W = 340;
-	private static final int PANEL_H = 214;
+	private static final int PANEL_H = 244;
 
 	private boolean json;
 	private EditBox left;
@@ -26,6 +26,7 @@ public class NameScreen extends Screen {
 	private EditBox bracketColor;
 	private EditBox symbolColor;
 	private EditBox nameColor;
+	private EditBox nameBox;
 	private EditBox jsonBox;
 	private Button modeButton;
 
@@ -61,6 +62,7 @@ public class NameScreen extends Screen {
 		bracketColor = box(x, py + 114, 90, 9, data.bracketColor);
 		symbolColor = box(x + 100, py + 114, 90, 9, data.symbolColor);
 		nameColor = box(x + 200, py + 114, 90, 9, data.nameColor);
+		nameBox = box(x, py + 154, 190, 40, data.name);
 		jsonBox = box(x, py + 74, PANEL_W - 28, 1500, data.jsonText);
 
 		this.addRenderableWidget(Button.builder(Component.literal("Save"), b -> save()).bounds(x, py + PANEL_H - 30, 80, 20).build());
@@ -85,7 +87,7 @@ public class NameScreen extends Screen {
 
 	private void updateVisibility() {
 		modeButton.setMessage(Component.literal(json ? "Mode: JSON text" : "Mode: simple"));
-		for (EditBox simple : new EditBox[]{left, symbol, right, bracketColor, symbolColor, nameColor}) {
+		for (EditBox simple : new EditBox[]{left, symbol, right, bracketColor, symbolColor, nameColor, nameBox}) {
 			simple.visible = !json;
 			simple.active = !json;
 		}
@@ -102,6 +104,7 @@ public class NameScreen extends Screen {
 		data.bracketColor = bracketColor.getValue();
 		data.symbolColor = symbolColor.getValue();
 		data.nameColor = nameColor.getValue();
+		data.name = nameBox.getValue();
 		data.jsonText = jsonBox.getValue();
 		return data;
 	}
@@ -120,7 +123,7 @@ public class NameScreen extends Screen {
 	/** Makes the preview from the fields (only when something changed). */
 	private void updatePreview() {
 		String signature = json + "|" + left.getValue() + "|" + symbol.getValue() + "|" + right.getValue() + "|" + bracketColor.getValue()
-				+ "|" + symbolColor.getValue() + "|" + nameColor.getValue() + "|" + jsonBox.getValue();
+				+ "|" + symbolColor.getValue() + "|" + nameColor.getValue() + "|" + nameBox.getValue() + "|" + jsonBox.getValue();
 		if (signature.equals(lastSignature)) {
 			return;
 		}
@@ -155,14 +158,15 @@ public class NameScreen extends Screen {
 			graphics.text(font, "Bracket color", x, py + 102, 0xFF9A9AA6, true);
 			graphics.text(font, "Symbol color", x + 100, py + 102, 0xFF9A9AA6, true);
 			graphics.text(font, "Name color", x + 200, py + 102, 0xFF9A9AA6, true);
-			graphics.text(font, "Colors like #FF5555", x, py + 138, 0xFF70707C, false);
+			graphics.text(font, "Name (empty = your real name {name})", x, py + 142, 0xFF9A9AA6, true);
+			graphics.text(font, "Colors like #FF5555", x + 200, py + 158, 0xFF70707C, false);
 		}
-		graphics.text(font, "Preview:", x, py + 152, 0xFF9A9AA6, true);
-		graphics.text(font, preview, x + 50, py + 152, 0xFFFFFFFF, true);
+		graphics.text(font, "Preview:", x, py + 182, 0xFF9A9AA6, true);
+		graphics.text(font, preview, x + 50, py + 182, 0xFFFFFFFF, true);
 		if (!error.isEmpty()) {
-			graphics.text(font, error, x, py + 168, 0xFFFF5555, true);
+			graphics.text(font, error, x, py + 198, 0xFFFF5555, true);
 		} else if (!status.isEmpty()) {
-			graphics.text(font, status, x, py + 168, 0xFF55FF55, true);
+			graphics.text(font, status, x, py + 198, 0xFF55FF55, true);
 		}
 	}
 

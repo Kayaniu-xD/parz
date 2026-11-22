@@ -37,13 +37,14 @@ public final class BadgeFormat {
 	}
 
 	/** The simple version: left bracket, symbol, right bracket, a space and the name. */
-	public static List<Run> simple(String left, String symbol, String right, int bracketRgb, int symbolRgb, int nameRgb) {
+	public static List<Run> simple(String left, String symbol, String right, int bracketRgb, int symbolRgb, int nameRgb, String nameText) {
 		List<Run> runs = new ArrayList<>();
 		runs.add(new Run(left, bracketRgb, ""));
 		runs.add(new Run(symbol, symbolRgb, ""));
 		runs.add(new Run(right, bracketRgb, ""));
 		runs.add(new Run(" ", -1, ""));
-		runs.add(new Run("{name}", nameRgb, ""));
+		// empty = your real name, otherwise the text you wrote
+		runs.add(new Run(nameText == null || nameText.isBlank() ? "{name}" : nameText, nameRgb, ""));
 		return check(normalize(runs));
 	}
 

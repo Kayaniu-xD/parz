@@ -28,6 +28,8 @@ public final class BadgeConfig {
 		public String bracketColor = "#FF5555";
 		public String symbolColor = "#FFAA00";
 		public String nameColor = "#FF5555";
+		/** The name itself: empty = your real Minecraft name. */
+		public String name = "";
 		public String jsonText = "";
 	}
 
@@ -95,7 +97,7 @@ public final class BadgeConfig {
 		if (bracket < 0 || symbol < 0 || name < 0) {
 			throw new IllegalArgumentException("A color must look like #FF5555");
 		}
-		return BadgeFormat.simple(settings.left, settings.symbol, settings.right, bracket, symbol, name);
+		return BadgeFormat.simple(settings.left, settings.symbol, settings.right, bracket, symbol, name, settings.name);
 	}
 
 	/** Takes over the settings if they are valid (throws IllegalArgumentException if not), saves them and tells the registry. */
