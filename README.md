@@ -124,7 +124,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 ### Other
 - **Badge / name**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab
   list and above the head, so you can see who else has the mod. With `/pz customname` everybody chooses their own look:
-  the brackets, the symbol (any text) and the colors, or a Minecraft text component in JSON (`{name}` stands for the
+  one text (`{name}` = the real name) with one color for everything or a color for every single letter, or a Minecraft
+  text component in JSON (the menu can write the JSON from your letters) (`{name}` stands for the
   real name; at most 48 characters and 16 colored pieces; clicks and hover texts are removed). It is saved in
   `config/parz-badge.json` and stays until you change or reset it. To know who uses Parz and how they want to look, the mod reports your Minecraft **name and
   UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
