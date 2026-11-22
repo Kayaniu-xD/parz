@@ -195,21 +195,13 @@ public final class BadgeFormat {
 	// ---- showing ----
 
 	/**
-	 * The component for a player. Their real name is always in it: if the format has no "{name}" and does not
-	 * write the name itself, the name is added, so nobody can pose as another player.
+	 * The component for a player: exactly the format they chose, "{name}" replaced by their real name. The format
+	 * may look like anything, also like the name of another player; nothing is added to it.
 	 */
 	public static MutableComponent render(List<Run> runs, String playerName) {
 		MutableComponent result = Component.literal("");
-		StringBuilder plain = new StringBuilder();
-		Run last = null;
 		for (Run run : runs) {
-			String text = run.text().replace("{name}", playerName);
-			plain.append(text);
-			result.append(Component.literal(text).withStyle(styleOf(run)));
-			last = run;
-		}
-		if (!plain.toString().toLowerCase(Locale.ROOT).contains(playerName.toLowerCase(Locale.ROOT))) {
-			result.append(Component.literal(" " + playerName).withStyle(last == null ? Style.EMPTY : styleOf(last)));
+			result.append(Component.literal(run.text().replace("{name}", playerName)).withStyle(styleOf(run)));
 		}
 		return result;
 	}
