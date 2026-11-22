@@ -191,7 +191,7 @@ public class ParzClient implements ClientModInitializer {
 	public static synchronized void saveAll() {
 		try {
 			ParzConfig.save();
-			DashboardData.save();
+			DashboardData.saveBlocking();
 		} catch (Exception e) {
 			LOGGER.error("Could not save Parz data", e);
 		}

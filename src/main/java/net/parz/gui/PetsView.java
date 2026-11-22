@@ -809,7 +809,7 @@ public final class PetsView {
 	// ---- helpers -------------------------------------------------------------------------
 
 	private static String clean(String text) {
-		return FORMATTING.matcher(text).replaceAll("");
+		return text.indexOf('§') < 0 ? text : FORMATTING.matcher(text).replaceAll("");
 	}
 
 	private static double clamp(double value, double min, double max) {

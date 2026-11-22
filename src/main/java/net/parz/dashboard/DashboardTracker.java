@@ -60,6 +60,7 @@ public final class DashboardTracker {
 
 	private static int tickCounter = 0;
 	private static boolean dirty = false;
+	private static long lastSaveMs = 0;
 	private static long lastPlaytimeTick = 0;
 	private static long lastPlaytimeSave = 0;
 	/** "collections" / "skills" while that menu is open, otherwise null. */
@@ -80,7 +81,7 @@ public final class DashboardTracker {
 			countPlaytime(client);
 			// changes are written to disk shortly after they happen (also if SkyBlock
 			// detection is off), so nothing is lost on a crash or when the game closes
-			if (tickCounter % 40 == 0) {
+			if (tickCounter % 40 == 0 && System.currentTimeMillis() - lastSaveMs >= 20_000L) {
 				saveIfDirty();
 			}
 			if (!SkyBlockDetector.featuresActive()) {
@@ -123,6 +124,7 @@ public final class DashboardTracker {
 	public static void saveIfDirty() {
 		if (dirty) {
 			dirty = false;
+			lastSaveMs = System.currentTimeMillis();
 			DashboardData.save();
 		}
 	}
@@ -398,7 +400,7 @@ public final class DashboardTracker {
 	// ---- helpers ----------------------------------------------------------------------
 
 	private static String clean(String text) {
-		return FORMATTING.matcher(text).replaceAll("");
+		return text.indexOf('§') < 0 ? text : FORMATTING.matcher(text).replaceAll("");
 	}
 
 	private static int parseLevel(String text) {

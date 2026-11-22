@@ -92,6 +92,7 @@ public final class CollectionTracker {
 	private static Map<String, Integer> baseline = null;
 	private static Object lastLevel = null;
 	private static int settleTicks = JOIN_SETTLE_TICKS;
+	private static int inventoryTick = 0;
 	private static long lastMenuMs = 0;
 	private static long lastSaleMs = 0;
 	private static long lastBuyMs = 0;
@@ -154,6 +155,10 @@ public final class CollectionTracker {
 			settleTicks = SETTLE_TICKS; // items that come back when a menu closes are not new
 		}
 
+		// counting the whole inventory (names, lookups) every tick is wasted work: every 4th tick is plenty
+		if (baseline != null && settleTicks == 0 && ++inventoryTick % 4 != 0) {
+			return;
+		}
 		Map<String, Integer> current = countInventory(client.player.getInventory());
 		if (baseline == null || settleTicks > 0 || !enabled()) {
 			baseline = current;
@@ -447,6 +452,6 @@ public final class CollectionTracker {
 	}
 
 	private static String clean(String text) {
-		return FORMATTING.matcher(text).replaceAll("");
+		return text.indexOf('§') < 0 ? text : FORMATTING.matcher(text).replaceAll("");
 	}
 }

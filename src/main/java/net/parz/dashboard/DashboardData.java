@@ -348,12 +348,48 @@ public final class DashboardData {
 		data.collections.entrySet().removeIf(e -> !api.containsKey(e.getKey()) && "UNKNOWN".equals(e.getValue().status));
 	}
 
+	/** Writes the file on its own thread: writing 300 KB on the game thread made a visible stutter. */
+	private static final java.util.concurrent.ExecutorService WRITER = java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
+		Thread thread = new Thread(runnable, "parz-save-io");
+		thread.setDaemon(true);
+		return thread;
+	});
+
 	public static void save() {
+		String json = serialize();
+		if (json != null) {
+			WRITER.execute(() -> write(json));
+		}
+	}
+
+	/** Like save(), but returns when the file is written (when the game closes). */
+	public static void saveBlocking() {
+		String json = serialize();
+		if (json == null) {
+			return;
+		}
+		try {
+			WRITER.submit(() -> write(json)).get(10, java.util.concurrent.TimeUnit.SECONDS);
+		} catch (Exception e) {
+			write(json);
+		}
+	}
+
+	private static String serialize() {
+		try {
+			return GSON.toJson(instance);
+		} catch (Exception e) {
+			ParzClient.LOGGER.error("Could not save the dashboard data", e);
+			return null;
+		}
+	}
+
+	private static synchronized void write(String json) {
 		try {
 			Files.createDirectories(FILE.getParent());
-			try (Writer writer = Files.newBufferedWriter(FILE)) {
-				GSON.toJson(instance, writer);
-			}
+			Path temp = FILE.resolveSibling(FILE.getFileName() + ".tmp");
+			Files.writeString(temp, json);
+			Files.move(temp, FILE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 		} catch (Exception e) {
 			ParzClient.LOGGER.error("Could not write {}", FILE, e);
 		}

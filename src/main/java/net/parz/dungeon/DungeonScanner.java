@@ -85,6 +85,7 @@ public final class DungeonScanner {
 	private final Map<Integer, Door> doors = new HashMap<>();
 	private List<int[]> remaining = allCoordinates();
 	private int passes = 0;
+	private final int[] attempts = new int[36];
 	private int[] forcedEntrance = null;
 
 	// what is built from it
@@ -143,6 +144,7 @@ public final class DungeonScanner {
 	public void reset() {
 		java.util.Arrays.fill(cellRoof, null);
 		java.util.Arrays.fill(cellInfo, null);
+		java.util.Arrays.fill(attempts, 0);
 		java.util.Arrays.fill(doorlessPasses, 0);
 		slotRoof.clear();
 		doors.clear();
@@ -189,8 +191,16 @@ public final class DungeonScanner {
 		remaining = keep;
 
 		// every cell is recognised on its own; cells that are not recognised yet are tried again each pass
-		for (int idx = 0; idx < 36; idx++) {
+		// (reading a room is expensive: a room that was not recognised after a few tries is only tried now and then,
+		// and only a few rooms are read per pass, so no single frame has to do it all)
+		int budget = 3;
+		for (int idx = 0; idx < 36 && budget > 0; idx++) {
 			if (cellRoof[idx] != null && cellInfo[idx] == null) {
+				if (attempts[idx] >= 4 && passes % 12 != 0) {
+					continue;
+				}
+				attempts[idx]++;
+				budget--;
 				identify(level, idx);
 			}
 		}
