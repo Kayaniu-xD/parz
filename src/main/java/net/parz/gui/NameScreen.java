@@ -14,6 +14,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.parz.badge.BadgeConfig;
 import net.parz.badge.BadgeFormat;
+import net.parz.badge.BadgePresets;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,23 @@ public class NameScreen extends Screen {
 	private Button modeButton;
 	private Button allButton;
 	private Button toJsonButton;
+
+	// ---- the list of saved looks (presets) ----
+	private boolean listView = false;
+	private EditBox presetNameBox;
+	private Button presetsButton;
+	private Button savePresetButton;
+	private Button loadPresetButton;
+	private Button deletePresetButton;
+	private Button saveButton;
+	private Button resetButton;
+	private int selectedPreset = -1;
+	private int listScroll = 0;
+	private static final int ROW_H = 26;
+	private static final int ROWS_SHOWN = 5;
+	private final java.util.Map<Integer, Component> presetPreviews = new java.util.HashMap<>();
+	/** The rows of the list that are drawn: x, y, w, h, index. */
+	private final List<int[]> rowAreas = new ArrayList<>();
 
 	private List<String> units = new ArrayList<>();
 	private List<String> unitColors = new ArrayList<>();
@@ -81,11 +99,18 @@ public class NameScreen extends Screen {
 			json = !json;
 			updateVisibility();
 			lastSignature = "";
-		}).bounds(x, py + 26, 150, 20).build();
+		}).bounds(x, py + 26, 100, 20).build();
 		this.addRenderableWidget(modeButton);
 		toJsonButton = Button.builder(Component.literal("Make JSON from this"), b -> makeJson())
-				.bounds(x + 158, py + 26, 150, 20).build();
+				.bounds(x + 106, py + 26, 124, 20).build();
 		this.addRenderableWidget(toJsonButton);
+		presetsButton = Button.builder(Component.literal("Presets"), b -> {
+			listView = !listView;
+			status = "";
+			error = "";
+			updateVisibility();
+		}).bounds(x + 236, py + 26, 72, 20).build();
+		this.addRenderableWidget(presetsButton);
 
 		textBox = new EditBox(this.font, x, py + 68, PANEL_W - 28, 18, Component.literal("text"));
 		textBox.setMaxLength(BadgeFormat.MAX_CHARS);
@@ -109,12 +134,32 @@ public class NameScreen extends Screen {
 		jsonBox.setResponder(text -> lastSignature = "");
 		this.addRenderableWidget(jsonBox);
 
-		this.addRenderableWidget(Button.builder(Component.literal("Save"), b -> save()).bounds(x, py + PANEL_H - 28, 80, 20).build());
-		this.addRenderableWidget(Button.builder(Component.literal("Reset"), b -> {
+		saveButton = Button.builder(Component.literal("Save"), b -> save()).bounds(x, py + PANEL_H - 28, 80, 20).build();
+		this.addRenderableWidget(saveButton);
+		resetButton = Button.builder(Component.literal("Reset"), b -> {
 			BadgeConfig.reset();
 			status = "Back to the default [ዞ] Name";
 			this.rebuildWidgets();
-		}).bounds(x + 88, py + PANEL_H - 28, 80, 20).build());
+		}).bounds(x + 88, py + PANEL_H - 28, 80, 20).build();
+		this.addRenderableWidget(resetButton);
+
+		presetNameBox = new EditBox(this.font, x, py + 68, 190, 18, Component.literal("preset name"));
+		presetNameBox.setMaxLength(BadgePresets.MAX_NAME);
+		this.addRenderableWidget(presetNameBox);
+		savePresetButton = Button.builder(Component.literal("Save current look"), b -> savePreset())
+				.bounds(x + 198, py + 67, 110, 20).build();
+		this.addRenderableWidget(savePresetButton);
+		loadPresetButton = Button.builder(Component.literal("Load"), b -> loadPreset())
+				.bounds(x, py + 232, 80, 20).build();
+		this.addRenderableWidget(loadPresetButton);
+		deletePresetButton = Button.builder(Component.literal("Delete"), b -> {
+			BadgePresets.remove(selectedPreset);
+			selectedPreset = -1;
+			presetPreviews.clear();
+			status = "Preset deleted";
+			error = "";
+		}).bounds(x + 88, py + 232, 80, 20).build();
+		this.addRenderableWidget(deletePresetButton);
 		this.addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
 				.bounds(px + PANEL_W - 94, py + PANEL_H - 28, 80, 20).build());
 		updateVisibility();
@@ -123,12 +168,70 @@ public class NameScreen extends Screen {
 
 	private void updateVisibility() {
 		modeButton.setMessage(Component.literal(json ? "Mode: JSON text" : "Mode: letters"));
-		for (AbstractWidget widget : new AbstractWidget[]{textBox, allButton, toJsonButton}) {
-			widget.visible = !json;
-			widget.active = !json;
+		presetsButton.setMessage(Component.literal(listView ? "Back" : "Presets"));
+		boolean editor = !listView;
+		setShown(modeButton, editor);
+		setShown(toJsonButton, editor && !json);
+		setShown(textBox, editor && !json);
+		setShown(allButton, editor && !json);
+		setShown(jsonBox, editor && json);
+		setShown(saveButton, editor);
+		setShown(resetButton, editor);
+		setShown(presetNameBox, listView);
+		setShown(savePresetButton, listView);
+		setShown(loadPresetButton, listView);
+		setShown(deletePresetButton, listView);
+	}
+
+	private static void setShown(AbstractWidget widget, boolean shown) {
+		widget.visible = shown;
+		widget.active = shown;
+	}
+
+	/** Saves the look in the editor (also when it is not saved as your name yet) as a preset. */
+	private void savePreset() {
+		try {
+			BadgePresets.put(presetNameBox.getValue(), fromFields());
+			presetPreviews.clear();
+			status = "Preset \"" + presetNameBox.getValue().trim() + "\" saved";
+			error = "";
+		} catch (IllegalArgumentException e) {
+			error = e.getMessage();
+			status = "";
 		}
-		jsonBox.visible = json;
-		jsonBox.active = json;
+	}
+
+	/** Takes a preset as your name (saved at once) and goes back to the editor with it. */
+	private void loadPreset() {
+		List<BadgePresets.Preset> presets = BadgePresets.list();
+		if (selectedPreset < 0 || selectedPreset >= presets.size()) {
+			error = "Click a preset in the list first";
+			status = "";
+			return;
+		}
+		try {
+			BadgePresets.Preset preset = presets.get(selectedPreset);
+			BadgeConfig.apply(preset.data.copy());
+			listView = false;
+			status = "Preset \"" + preset.name + "\" loaded and saved as your name";
+			error = "";
+			this.rebuildWidgets();
+		} catch (IllegalArgumentException e) {
+			error = e.getMessage();
+			status = "";
+		}
+	}
+
+	/** The preview of a preset in the list (made once). */
+	private Component presetPreview(int index) {
+		return presetPreviews.computeIfAbsent(index, i -> {
+			try {
+				String name = Minecraft.getInstance().getUser().getName();
+				return BadgeFormat.render(BadgeConfig.compute(BadgePresets.list().get(i).data), name);
+			} catch (RuntimeException e) {
+				return Component.literal("(not valid)");
+			}
+		});
 	}
 
 	/** The text changed: the letters change, every letter that stays keeps its color. */
@@ -334,6 +437,16 @@ public class NameScreen extends Screen {
 		int x = px + 14;
 		graphics.text(font, "Your name for other Parz users", x, py + 10, 0xFFFFAA00, true);
 		cells.clear();
+		rowAreas.clear();
+		if (listView) {
+			drawList(graphics, x, mouseX, mouseY);
+			if (!error.isEmpty()) {
+				graphics.text(font, error, x, py + 266, 0xFFFF5555, true);
+			} else if (!status.isEmpty()) {
+				graphics.text(font, status, x, py + 266, 0xFF55FF55, true);
+			}
+			return;
+		}
 		if (json) {
 			graphics.text(font, "Minecraft text component (JSON). {name} = your name.", x, py + 56, 0xFF9A9AA6, true);
 			graphics.text(font, "Tip: \"Make JSON from this\" in letter mode writes it for you.", x, py + 92, 0xFF70707C, false);
@@ -349,6 +462,33 @@ public class NameScreen extends Screen {
 			graphics.text(font, error, x, py + 266, 0xFFFF5555, true);
 		} else if (!status.isEmpty()) {
 			graphics.text(font, status, x, py + 266, 0xFF55FF55, true);
+		}
+	}
+
+	/** The list of saved looks: name and preview, click one to select it. */
+	private void drawList(GuiGraphicsExtractor graphics, int x, int mouseX, int mouseY) {
+		graphics.text(font, "Name for the preset (an existing one is replaced):", x, py + 56, 0xFF9A9AA6, true);
+		List<BadgePresets.Preset> presets = BadgePresets.list();
+		int listY = py + 96;
+		int maxScroll = Math.max(0, presets.size() - ROWS_SHOWN);
+		listScroll = Math.max(0, Math.min(listScroll, maxScroll));
+		if (presets.isEmpty()) {
+			graphics.text(font, "No presets yet. Make a look in the editor,", x, listY + 8, 0xFF70707C, false);
+			graphics.text(font, "come back here and press \"Save current look\".", x, listY + 20, 0xFF70707C, false);
+		}
+		int width = PANEL_W - 28;
+		for (int row = 0; row < ROWS_SHOWN && listScroll + row < presets.size(); row++) {
+			int index = listScroll + row;
+			int ry = listY + row * ROW_H;
+			boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= ry && mouseY < ry + ROW_H - 2;
+			graphics.fill(x, ry, x + width, ry + ROW_H - 2, index == selectedPreset ? 0xFF474851 : hovered ? 0xFF2D2E35 : 0xFF1B1C20);
+			graphics.outline(x, ry, width, ROW_H - 2, index == selectedPreset ? 0xFFFFFFFF : 0xFF3B3C45);
+			graphics.text(font, presets.get(index).name, x + 6, ry + 8, 0xFFE4E4EA, true);
+			graphics.text(font, presetPreview(index), x + 130, ry + 8, 0xFFFFFFFF, true);
+			rowAreas.add(new int[]{x, ry, width, ROW_H - 2, index});
+		}
+		if (presets.size() > ROWS_SHOWN) {
+			graphics.text(font, "Scroll for more (" + presets.size() + " presets)", x + 180, py + 238, 0xFF70707C, false);
 		}
 	}
 
@@ -412,6 +552,21 @@ public class NameScreen extends Screen {
 
 	@Override
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (listView && event.button() == 0) {
+			for (int[] row : rowAreas) {
+				if (event.x() >= row[0] && event.x() < row[0] + row[2] && event.y() >= row[1] && event.y() < row[1] + row[3]) {
+					selectedPreset = row[4];
+					presetNameBox.setValue(BadgePresets.list().get(row[4]).name);
+					error = "";
+					status = "";
+					if (doubleClick) {
+						loadPreset();
+					}
+					return true;
+				}
+			}
+			return super.mouseClicked(event, doubleClick);
+		}
 		if (!json && event.button() == 0) {
 			for (int i = 0; i < cells.size(); i++) {
 				int[] cell = cells.get(i);
@@ -422,7 +577,7 @@ public class NameScreen extends Screen {
 				}
 			}
 		}
-		if (!json && event.button() == 0) {
+		if (!listView && !json && event.button() == 0) {
 			double radius = WHEEL / 2.0;
 			double dx = event.x() - (wheelX() + radius);
 			double dy = event.y() - (wheelY() + radius);
@@ -455,6 +610,15 @@ public class NameScreen extends Screen {
 		return super.mouseReleased(event);
 	}
 
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (listView) {
+			listScroll = Math.max(0, listScroll - (int) Math.signum(scrollY));
+			return true;
+		}
+		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+	}
 
 	@Override
 	public boolean isPauseScreen() {

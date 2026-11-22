@@ -52,6 +52,7 @@ public class ParzClient implements ClientModInitializer {
 		net.parz.hollows.NucleusSlot.register();
 		net.parz.fishing.FishingPuzzle.register();
 		net.parz.badge.BadgeConfig.load();
+		net.parz.badge.BadgePresets.load();
 		net.parz.badge.ModUsers.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
