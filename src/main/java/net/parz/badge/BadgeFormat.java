@@ -25,7 +25,7 @@ import java.util.Optional;
  */
 public final class BadgeFormat {
 	public static final int MAX_CHARS = 48;
-	public static final int MAX_RUNS = 16;
+	public static final int MAX_RUNS = 30;
 	/** The wire format must stay below the 700 characters of the registry. */
 	private static final int MAX_WIRE = 650;
 
@@ -34,6 +34,53 @@ public final class BadgeFormat {
 	}
 
 	private BadgeFormat() {
+	}
+
+	/** Cuts a text into units: every character, but "{name}" is one unit. */
+	public static List<String> tokenize(String text) {
+		List<String> units = new ArrayList<>();
+		int i = 0;
+		while (i < text.length()) {
+			if (text.startsWith("{name}", i)) {
+				units.add("{name}");
+				i += 6;
+			} else {
+				int length = Character.charCount(text.codePointAt(i));
+				units.add(text.substring(i, i + length));
+				i += length;
+			}
+		}
+		return units;
+	}
+
+	/** Units with a color each (-1 = none) become the pieces of a format (same colors next to each other are joined). */
+	public static List<Run> build(List<String> units, List<Integer> colors) {
+		List<Run> runs = new ArrayList<>();
+		for (int i = 0; i < units.size(); i++) {
+			runs.add(new Run(units.get(i), colors.get(i), ""));
+		}
+		return check(normalize(runs));
+	}
+
+	/** The format as a Minecraft text component in JSON (what the JSON mode of the menu shows). */
+	public static String toJson(List<Run> runs) {
+		JsonArray extra = new JsonArray();
+		for (Run run : runs) {
+			JsonObject piece = new JsonObject();
+			piece.addProperty("text", run.text());
+			if (run.rgb() >= 0) {
+				piece.addProperty("color", String.format(Locale.ROOT, "#%06X", run.rgb()));
+			}
+			if (run.flags().indexOf('b') >= 0) piece.addProperty("bold", true);
+			if (run.flags().indexOf('i') >= 0) piece.addProperty("italic", true);
+			if (run.flags().indexOf('u') >= 0) piece.addProperty("underlined", true);
+			if (run.flags().indexOf('s') >= 0) piece.addProperty("strikethrough", true);
+			extra.add(piece);
+		}
+		JsonObject root = new JsonObject();
+		root.addProperty("text", "");
+		root.add("extra", extra);
+		return root.toString();
 	}
 
 	/** The simple version: left bracket, symbol, right bracket, a space and the name. */
