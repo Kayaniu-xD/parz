@@ -121,6 +121,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   inventory. Try it with `/pz fishing`.
 
 ### Other
+- **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.
 
