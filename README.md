@@ -101,7 +101,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   entered. The map is not read from the Magic Map item in your hotbar: Parz scans the blocks that are already loaded
   in your game and recognises each room by its blocks. The entrance is always at the bottom. Rooms show their name
   and the number of secrets, and their state (not entered / entered / cleared / completed / failed). A footer shows
-  score, secrets, crypts and deaths. Move and resize the map with `/pz hud`.
+  score, secrets, crypts and deaths. Move and resize the map with `/pz hud`. In the boss room the map is hidden.
 - **M7 Dragon Arrow Stack**: in the dragon phase of the Master Mode 7 boss fight, a cyan ring appears while a dragon
   is spawning. It shows where to aim your bow so that the arrow lands on the stack position of that dragon, with the
   drop of the arrow included. The ring always faces you, is visible through walls and gets bigger with the distance.
