@@ -46,3 +46,7 @@ Thumbs.db
 
 # extra Minecraft version builds
 variants/
+
+# Cloudflare wrangler cache (contains the account email)
+server/.wrangler/
+server/node_modules/

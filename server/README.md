@@ -8,7 +8,7 @@ that on its own, so every Parz client reports its own account to this tiny regis
 1. Install Node.js, then in this folder: `npx wrangler login`
 2. `npx wrangler kv namespace create USERS` and put the printed `id` into `wrangler.toml`
 3. `npx wrangler deploy` - it prints the address, for example `https://parz-registry.yourname.workers.dev`
-4. Put that address into the mod: `REGISTRY_URL` in `src/main/java/net/parz/badge/ModUsers.java`
+4. If you host your own copy, put its address into `REGISTRY_URL` in `src/main/java/net/parz/badge/ModUsers.java`
    (for a quick test you can instead write it into `config/parz-registry.txt` of one Minecraft instance).
 
 ## What is stored
