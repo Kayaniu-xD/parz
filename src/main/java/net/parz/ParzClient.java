@@ -53,6 +53,7 @@ public class ParzClient implements ClientModInitializer {
 		net.parz.fishing.FishingPuzzle.register();
 		net.parz.badge.BadgeConfig.load();
 		net.parz.badge.BadgePresets.load();
+		net.parz.badge.ArmorColorConfig.load();
 		net.parz.badge.ModUsers.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
@@ -123,6 +124,21 @@ public class ParzClient implements ClientModInitializer {
 							.then(ClientCommands.literal("json").then(ClientCommands.argument("text", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(context -> {
 								return nameJson(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "text"));
 							}))))
+					.then(ClientCommands.literal("customarmor")
+							.executes(context -> {
+								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal(
+										"[Parz] Use /pz customarmor <#RRGGBB> or /pz customarmor reset. Only leather armor can show a color."));
+								return 1;
+							})
+							.then(ClientCommands.literal("reset").executes(context -> {
+								net.parz.badge.ArmorColorConfig.reset();
+								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Your armor color was reset.")
+										.withStyle(net.minecraft.ChatFormatting.GREEN));
+								return 1;
+							}))
+							.then(ClientCommands.argument("color", com.mojang.brigadier.arguments.StringArgumentType.word()).executes(context -> {
+								return armorColor(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "color"));
+							})))
 					.then(ClientCommands.literal("help").executes(context -> {
 							sendHelp(context.getSource());
 							return 1;
@@ -164,6 +180,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
 			{"pz customname", "Choose how your name looks to other Parz users (menu, or /pz customname json <json>)"},
+			{"pz customarmor", "Choose a color other Parz users see on your leather armor (/pz customarmor #RRGGBB, reset to clear it)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
@@ -200,6 +217,20 @@ public class ParzClient implements ClientModInitializer {
 				.withStyle(net.minecraft.ChatFormatting.GREEN)
 				.append(net.parz.badge.BadgeFormat.render(net.parz.badge.BadgeConfig.runs(),
 						net.minecraft.client.Minecraft.getInstance().getUser().getName())));
+		return 1;
+	}
+
+	/** /pz customarmor <#RRGGBB>: the color other Parz users see on your leather armor. */
+	private static int armorColor(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String text) {
+		try {
+			net.parz.badge.ArmorColorConfig.apply(text);
+		} catch (IllegalArgumentException e) {
+			source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] " + e.getMessage())
+					.withStyle(net.minecraft.ChatFormatting.RED));
+			return 0;
+		}
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your leather armor.")
+				.withStyle(net.minecraft.ChatFormatting.GREEN));
 		return 1;
 	}
 

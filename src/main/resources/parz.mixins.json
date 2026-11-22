@@ -11,7 +11,10 @@
 		"TabBadgeMixin",
 		"NameTagBadgeMixin",
 		"TeamBadgeMixin",
-		"ChatBadgeMixin"
+		"ChatBadgeMixin",
+		"ArmorColorStateMixin",
+		"ArmorColorExtractMixin",
+		"ArmorColorRenderMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
