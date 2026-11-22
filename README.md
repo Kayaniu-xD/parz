@@ -121,8 +121,11 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   inventory. Try it with `/pz fishing`.
 
 ### Other
-- **Badge**: the account `Pay2Loze` (the developer) is shown as `[ዞ] Pay2Loze` (red brackets and name, gold symbol) in
-  the tab list and above its head. It only changes how the name looks on your own screen and has no setting.
+- **Badge**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab list and
+  above the head, so you can see who else has the mod. It has no setting. To know who uses Parz, the mod reports your
+  Minecraft **name and UUID** to a small registry (see [server/](server/)) while you are in a world and reads the
+  list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
+  minutes after the last report. Until a registry address is set, only your own account (and `Pay2Loze`) get the badge.
 - **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.

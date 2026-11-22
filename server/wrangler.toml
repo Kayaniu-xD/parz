@@ -1,0 +1,9 @@
+name = "parz-registry"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# create the store once with:  npx wrangler kv namespace create USERS
+# and paste the id it prints here
+[[kv_namespaces]]
+binding = "USERS"
+id = "PUT_THE_ID_HERE"
