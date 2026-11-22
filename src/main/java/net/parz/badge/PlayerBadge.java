@@ -22,19 +22,24 @@ public final class PlayerBadge {
 	}
 
 	/** The name in the format its player chose (default: "[ዞ] Name"). */
-	private static MutableComponent badgeAndName(String playerName) {
-		return BadgeFormat.render(ModUsers.formatOf(playerName), playerName);
+	private static MutableComponent badgeAndName(String playerName, boolean legacyColors) {
+		return BadgeFormat.render(ModUsers.formatOf(playerName), playerName, legacyColors);
 	}
 
 	/** The name as "[ዞ] Name" if it is a badge account (by its profile name), otherwise unchanged. */
 	public static Component apply(String playerName, Component original) {
+		return apply(playerName, original, false);
+	}
+
+	/** legacyColors: only the 16 Minecraft colors (for the tab list, see BadgeFormat.render). */
+	public static Component apply(String playerName, Component original, boolean legacyColors) {
 		if (original == null || playerName == null || !ModUsers.isUser(playerName)) {
 			return original;
 		}
 		if (original.getString().contains(SYMBOL)) {
 			return original; // already there
 		}
-		return badgeAndName(playerName);
+		return badgeAndName(playerName, legacyColors);
 	}
 
 	/**
@@ -103,7 +108,7 @@ public final class PlayerBadge {
 			}
 			if (!inserted) {
 				inserted = true;
-				result.append(badgeAndName(name));
+				result.append(badgeAndName(name, true)); // (only the tab list uses this)
 			}
 			if (pieceEnd > end) {
 				result.append(Component.literal(piece.substring(end - pieceStart)).withStyle(styles.get(i)));

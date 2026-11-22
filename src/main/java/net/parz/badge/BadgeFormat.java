@@ -247,11 +247,41 @@ public final class BadgeFormat {
 	 * may look like anything, also like the name of another player; nothing is added to it.
 	 */
 	public static MutableComponent render(List<Run> runs, String playerName) {
+		return render(runs, playerName, false);
+	}
+
+	/**
+	 * Like render. With legacyColors every color that is not one of the 16 Minecraft colors becomes the nearest of
+	 * them: some mods that redraw the tab list cannot show free colors and write "<#FF00FF>" as text instead.
+	 */
+	public static MutableComponent render(List<Run> runs, String playerName, boolean legacyColors) {
 		MutableComponent result = Component.literal("");
 		for (Run run : runs) {
-			result.append(Component.literal(run.text().replace("{name}", playerName)).withStyle(styleOf(run)));
+			Run shown = legacyColors && run.rgb() >= 0 ? new Run(run.text(), nearestNamedColor(run.rgb()), run.flags()) : run;
+			result.append(Component.literal(run.text().replace("{name}", playerName)).withStyle(styleOf(shown)));
 		}
 		return result;
+	}
+
+	private static final int[] NAMED_COLORS = {
+			0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA,
+			0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF};
+
+	/** The Minecraft color (of the 16) that is closest to the given color; a color that is one of them stays. */
+	static int nearestNamedColor(int rgb) {
+		int best = NAMED_COLORS[0];
+		long bestDistance = Long.MAX_VALUE;
+		for (int named : NAMED_COLORS) {
+			long dr = ((rgb >> 16) & 255) - ((named >> 16) & 255);
+			long dg = ((rgb >> 8) & 255) - ((named >> 8) & 255);
+			long db = (rgb & 255) - (named & 255);
+			long distance = dr * dr + dg * dg + db * db;
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				best = named;
+			}
+		}
+		return best;
 	}
 
 	private static Style styleOf(Run run) {

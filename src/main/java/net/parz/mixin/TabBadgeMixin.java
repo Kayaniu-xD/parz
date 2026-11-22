@@ -40,7 +40,7 @@ public abstract class TabBadgeMixin {
 				return;
 			}
 			// a real profile name first, then the text of the line
-			Component changed = PlayerBadge.apply(info.getProfile().name(), shown);
+			Component changed = PlayerBadge.apply(info.getProfile().name(), shown, true);
 			if (changed == shown) {
 				changed = PlayerBadge.applyInText(shown);
 			}
