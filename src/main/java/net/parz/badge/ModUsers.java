@@ -56,16 +56,44 @@ public final class ModUsers {
 		}, 5, 60, TimeUnit.SECONDS);
 	}
 
+	/** Accounts that always have the badge (the developer), also when the registry is not reachable. */
+	private static final String[] ALWAYS = {"pay2loze"};
+	private static volatile int version = 0;
+
+	/** Changes every time the list of users changes (so cached names are made again). */
+	public static int version() {
+		return version;
+	}
+
 	/** True for you and for every player that reported to the registry. */
 	public static boolean isUser(String name) {
 		if (name == null) {
 			return false;
 		}
+		String lower = name.toLowerCase(Locale.ROOT);
+		for (String always : ALWAYS) {
+			if (always.equals(lower)) {
+				return true;
+			}
+		}
 		Minecraft client = Minecraft.getInstance();
 		if (client.getUser() != null && client.getUser().getName().equalsIgnoreCase(name)) {
 			return true;
 		}
-		return online.contains(name.toLowerCase(Locale.ROOT));
+		return online.contains(lower);
+	}
+
+	/** All names that get the badge (lower case): you, the developer and the users of the registry. */
+	public static Set<String> names() {
+		Set<String> names = new HashSet<>(online);
+		for (String always : ALWAYS) {
+			names.add(always);
+		}
+		Minecraft client = Minecraft.getInstance();
+		if (client.getUser() != null) {
+			names.add(client.getUser().getName().toLowerCase(Locale.ROOT));
+		}
+		return names;
 	}
 
 	private static String url() {
@@ -116,6 +144,9 @@ public final class ModUsers {
 		JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
 		for (JsonElement element : body.getAsJsonArray("users")) {
 			names.add(element.getAsString().toLowerCase(Locale.ROOT));
+		}
+		if (!names.equals(online)) {
+			version++;
 		}
 		online = names;
 		Debug.log("badge", () -> "Parz users online: " + names.size());

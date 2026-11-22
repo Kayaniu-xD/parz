@@ -2,48 +2,126 @@ package net.parz.badge;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
 /**
- * The badge of the developer account, in the tab list and above the head: "[ዞ] Name" - brackets and name in red,
- * the symbol in gold. The name is the real Minecraft name of the player. It is always on (there is no setting)
- * and only changes how the name is drawn on your own screen.
+ * The badge of every Parz user, in the tab list and above the head: "[ዞ] Name" - brackets and name in red, the
+ * symbol in gold. The name is the real Minecraft name of the player. It is always on (there is no setting) and
+ * only changes how the name is drawn on your own screen.
  */
 public final class PlayerBadge {
 	private static final TextColor RED = TextColor.fromRgb(0xFF5555);
 	private static final TextColor GOLD = TextColor.fromRgb(0xFFAA00);
 	/** The symbol in the middle of the brackets (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
-	/** Accounts that always get the badge, also without the registry. */
-	private static final String[] OWNERS = {"Pay2Loze"};
 
 	private PlayerBadge() {
 	}
 
-	/** The developer, you, and every other player that uses Parz (see ModUsers). */
-	private static boolean isOwner(String playerName) {
-		for (String owner : OWNERS) {
-			if (owner.equalsIgnoreCase(playerName)) {
-				return true;
-			}
-		}
-		return ModUsers.isUser(playerName);
+	/** "[ዞ] Name" in the colors of the badge. */
+	private static MutableComponent badgeAndName(String playerName) {
+		MutableComponent result = Component.literal("");
+		result.append(Component.literal("[").withStyle(style -> style.withColor(RED)));
+		result.append(Component.literal(SYMBOL).withStyle(style -> style.withColor(GOLD)));
+		result.append(Component.literal("]").withStyle(style -> style.withColor(RED)));
+		result.append(Component.literal(" "));
+		result.append(Component.literal(playerName).withStyle(style -> style.withColor(RED)));
+		return result;
 	}
 
-	/** The name as "[ዞ] Name" if it is a badge account, otherwise unchanged. */
+	/** The name as "[ዞ] Name" if it is a badge account (by its profile name), otherwise unchanged. */
 	public static Component apply(String playerName, Component original) {
-		if (original == null || playerName == null || !isOwner(playerName)) {
+		if (original == null || playerName == null || !ModUsers.isUser(playerName)) {
 			return original;
 		}
 		if (original.getString().contains(SYMBOL)) {
 			return original; // already there
 		}
-		MutableComponent name = Component.literal("");
-		name.append(Component.literal("[").withStyle(style -> style.withColor(RED)));
-		name.append(Component.literal(SYMBOL).withStyle(style -> style.withColor(GOLD)));
-		name.append(Component.literal("]").withStyle(style -> style.withColor(RED)));
-		name.append(Component.literal(" "));
-		name.append(Component.literal(playerName).withStyle(style -> style.withColor(RED)));
-		return name;
+		return badgeAndName(playerName);
+	}
+
+	/**
+	 * For lists whose entries are not the real profiles: the SkyBlock tab list shows "[550] Pay2Loze" in entries
+	 * with made-up profile names, so the name is looked for in the TEXT. The badge goes in front of the name,
+	 * everything else of the line (the level, the icons) stays as it is.
+	 */
+	public static Component applyInText(Component original) {
+		if (original == null) {
+			return null;
+		}
+		String text = original.getString();
+		if (text.isEmpty() || text.contains(SYMBOL)) {
+			return original;
+		}
+		String lower = text.toLowerCase(Locale.ROOT);
+		int start = -1;
+		int end = -1;
+		String name = null;
+		for (String candidate : ModUsers.names()) {
+			int from = 0;
+			while (true) {
+				int index = lower.indexOf(candidate, from);
+				if (index < 0) {
+					break;
+				}
+				int after = index + candidate.length();
+				boolean wordStart = index == 0 || !isNameChar(lower.charAt(index - 1));
+				boolean wordEnd = after >= lower.length() || !isNameChar(lower.charAt(after));
+				if (wordStart && wordEnd) {
+					if (start < 0 || index < start) {
+						start = index;
+						end = after;
+						name = text.substring(index, after);
+					}
+					break;
+				}
+				from = index + 1;
+			}
+		}
+		if (name == null) {
+			return original;
+		}
+		// the line piece by piece (every piece has its own style): cut it at the name
+		List<String> texts = new ArrayList<>();
+		List<Style> styles = new ArrayList<>();
+		original.visit((style, piece) -> {
+			texts.add(piece);
+			styles.add(style);
+			return Optional.empty();
+		}, Style.EMPTY);
+		MutableComponent result = Component.literal("");
+		int offset = 0;
+		boolean inserted = false;
+		for (int i = 0; i < texts.size(); i++) {
+			String piece = texts.get(i);
+			int pieceStart = offset;
+			int pieceEnd = offset + piece.length();
+			offset = pieceEnd;
+			if (pieceEnd <= start || pieceStart >= end) {
+				result.append(Component.literal(piece).withStyle(styles.get(i)));
+				continue;
+			}
+			if (pieceStart < start) {
+				result.append(Component.literal(piece.substring(0, start - pieceStart)).withStyle(styles.get(i)));
+			}
+			if (!inserted) {
+				inserted = true;
+				result.append(badgeAndName(name));
+			}
+			if (pieceEnd > end) {
+				result.append(Component.literal(piece.substring(end - pieceStart)).withStyle(styles.get(i)));
+			}
+		}
+		return result;
+	}
+
+	private static boolean isNameChar(char c) {
+		return Character.isLetterOrDigit(c) || c == '_';
 	}
 }
