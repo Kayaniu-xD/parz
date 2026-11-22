@@ -41,6 +41,7 @@ Parz updates itself from the GitHub releases.
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
+| `/pz name` | Menu to choose how your name looks to other Parz users (also `/pz name json <text component>` and `/pz name reset`) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -121,11 +122,14 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   inventory. Try it with `/pz fishing`.
 
 ### Other
-- **Badge**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab list and
-  above the head, so you can see who else has the mod. It has no setting. To know who uses Parz, the mod reports your
-  Minecraft **name and UUID** to a small registry (see [server/](server/)) while you are in a world and reads the
-  list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
-  minutes after the last report. The registry runs as a Cloudflare Worker (`server/worker.js`); if it is not reachable only your own account (and `Pay2Loze`) get the badge.
+- **Badge / name**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab
+  list and above the head, so you can see who else has the mod. With `/pz name` everybody chooses their own look:
+  the brackets, the symbol (any text) and the colors, or a Minecraft text component in JSON (`{name}` stands for the
+  real name; at most 48 characters and 16 colored pieces; clicks and hover texts are removed). Your real name is
+  always part of it. To know who uses Parz and how they want to look, the mod reports your Minecraft **name and
+  UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
+  the list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
+  minutes after the last report. If the registry is not reachable, only your own account (and `Pay2Loze`) get the badge.
 - **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.
