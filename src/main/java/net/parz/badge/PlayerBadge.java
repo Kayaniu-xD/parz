@@ -14,19 +14,20 @@ public final class PlayerBadge {
 	private static final TextColor GOLD = TextColor.fromRgb(0xFFAA00);
 	/** The symbol in the middle of the brackets (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
-	/** The accounts that get the badge. */
+	/** Accounts that always get the badge, also without the registry. */
 	private static final String[] OWNERS = {"Pay2Loze"};
 
 	private PlayerBadge() {
 	}
 
+	/** The developer, you, and every other player that uses Parz (see ModUsers). */
 	private static boolean isOwner(String playerName) {
 		for (String owner : OWNERS) {
 			if (owner.equalsIgnoreCase(playerName)) {
 				return true;
 			}
 		}
-		return false;
+		return ModUsers.isUser(playerName);
 	}
 
 	/** The name as "[ዞ] Name" if it is a badge account, otherwise unchanged. */
