@@ -121,6 +121,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   inventory. Try it with `/pz fishing`.
 
 ### Other
+- **[H] badge**: the account `Pay2Loze` (the developer) gets a `[H]` in front of its name, in the tab list and above
+  its head, in the color of the name. It only changes how the name looks on your own screen and has no setting.
 - **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.
