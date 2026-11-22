@@ -12,7 +12,7 @@ import net.parz.badge.BadgeFormat;
 import java.util.List;
 
 /**
- * /pz name - how your name is shown to the other Parz users (tab list and above your head): the simple fields
+ * /pz customname - how your name is shown to the other Parz users (tab list and above your head): the simple fields
  * (brackets, symbol and colors) or a Minecraft text component in JSON.
  */
 public class NameScreen extends Screen {

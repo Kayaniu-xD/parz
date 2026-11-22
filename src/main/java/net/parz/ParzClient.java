@@ -108,7 +108,7 @@ public class ParzClient implements ClientModInitializer {
 								net.parz.fishing.FishingPuzzle.test("ragnarok");
 								return 1;
 							})))
-					.then(ClientCommands.literal("name")
+					.then(ClientCommands.literal("customname")
 							.executes(context -> {
 								screenToOpen = net.parz.gui.NameScreen::new;
 								return 1;
@@ -162,7 +162,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
-			{"pz name", "Choose how your name looks to other Parz users (menu, or /pz name json <json>)"},
+			{"pz customname", "Choose how your name looks to other Parz users (menu, or /pz customname json <json>)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
@@ -183,7 +183,7 @@ public class ParzClient implements ClientModInitializer {
 		return 1;
 	}
 
-	/** /pz name json <text component>: your name from a JSON text. */
+	/** /pz customname json <text component>: your name from a JSON text. */
 	private static int nameJson(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String text) {
 		net.parz.badge.BadgeConfig.Data data = new net.parz.badge.BadgeConfig.Data();
 		data.json = true;
