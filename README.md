@@ -126,7 +126,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   list, in the scoreboard (for example the party list in a dungeon), in the chat and above the head, so you can see who else has
   the mod. With `/pz customname` everybody chooses their own look:
   one text (`{name}` = the real name) with one color for everything or a color for every single letter, or a Minecraft
-  text component in JSON (the menu can write the JSON from your letters) (`{name}` stands for the
+  text component in JSON (the menu can write the JSON from your letters). The "Presets" button opens a list where you save a look under a name and load it again (saved in `config/parz-badge-presets.json`) (`{name}` stands for the
   real name; at most 48 characters and 16 colored pieces; clicks and hover texts are removed). It is saved in
   `config/parz-badge.json` and stays until you change or reset it. To know who uses Parz and how they want to look, the mod reports your Minecraft **name and
   UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
