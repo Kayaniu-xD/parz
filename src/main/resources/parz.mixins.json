@@ -10,7 +10,8 @@
 		"HurtShakeMixin",
 		"TabBadgeMixin",
 		"NameTagBadgeMixin",
-		"TeamBadgeMixin"
+		"TeamBadgeMixin",
+		"ChatBadgeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

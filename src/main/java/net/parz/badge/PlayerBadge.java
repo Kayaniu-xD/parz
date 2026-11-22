@@ -3,19 +3,21 @@ package net.parz.badge;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+import net.parz.Debug;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 /**
- * The badge of every Parz user, in the tab list and above the head: "[ዞ] Name" - brackets and name in red, the
- * symbol in gold. The name is the real Minecraft name of the player. It is always on (there is no setting) and
- * only changes how the name is drawn on your own screen.
+ * The name of every Parz user as that player chose it (default "[ዞ] Name"), in the tab list, the scoreboard, the
+ * chat and above the head. It is always on (there is no setting) and only changes how the name is drawn on
+ * your own screen.
  */
 public final class PlayerBadge {
-	/** The symbol in the middle of the brackets (it is drawn as the H badge). */
+	/** The symbol of the default look (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
 
 	private PlayerBadge() {
@@ -44,10 +46,30 @@ public final class PlayerBadge {
 
 	/**
 	 * For lists whose entries are not the real profiles: the SkyBlock tab list shows "[550] Pay2Loze" in entries
-	 * with made-up profile names, so the name is looked for in the TEXT. The badge goes in front of the name,
+	 * with made-up profile names, so the name is looked for in the TEXT. The badge goes in the place of the name,
 	 * everything else of the line (the level, the icons) stays as it is.
 	 */
 	public static Component applyInText(Component original) {
+		return replaceNames(original, 1, true);
+	}
+
+	/** A chat message: every name of a Parz user in it is replaced (the message itself is not touched for other mods). */
+	public static Component applyInChat(Component original) {
+		if (original == null) {
+			return null;
+		}
+		String text = original.getString();
+		if (text.startsWith("[Parz]") || Debug.isOwnMessage(text)) {
+			return original;
+		}
+		return replaceNames(original, 8, false);
+	}
+
+	private record Match(int start, int end, String name) {
+	}
+
+	/** Replaces up to maxMatches names of Parz users in the text by their chosen format. */
+	private static Component replaceNames(Component original, int maxMatches, boolean legacyColors) {
 		if (original == null) {
 			return null;
 		}
@@ -56,9 +78,7 @@ public final class PlayerBadge {
 			return original;
 		}
 		String lower = text.toLowerCase(Locale.ROOT);
-		int start = -1;
-		int end = -1;
-		String name = null;
+		List<Match> found = new ArrayList<>();
 		for (String candidate : ModUsers.names()) {
 			int from = 0;
 			while (true) {
@@ -70,20 +90,25 @@ public final class PlayerBadge {
 				boolean wordStart = index == 0 || !isNameChar(lower.charAt(index - 1));
 				boolean wordEnd = after >= lower.length() || !isNameChar(lower.charAt(after));
 				if (wordStart && wordEnd) {
-					if (start < 0 || index < start) {
-						start = index;
-						end = after;
-						name = text.substring(index, after);
-					}
-					break;
+					found.add(new Match(index, after, text.substring(index, after)));
 				}
 				from = index + 1;
 			}
 		}
-		if (name == null) {
+		if (found.isEmpty()) {
 			return original;
 		}
-		// the line piece by piece (every piece has its own style): cut it at the name
+		found.sort(Comparator.comparingInt(Match::start));
+		List<Match> matches = new ArrayList<>();
+		int lastEnd = -1;
+		for (Match match : found) {
+			if (match.start() >= lastEnd && matches.size() < maxMatches) {
+				matches.add(match);
+				lastEnd = match.end();
+			}
+		}
+
+		// the line piece by piece (every piece has its own style): cut it at the names
 		List<String> texts = new ArrayList<>();
 		List<Style> styles = new ArrayList<>();
 		original.visit((style, piece) -> {
@@ -93,26 +118,38 @@ public final class PlayerBadge {
 		}, Style.EMPTY);
 		MutableComponent result = Component.literal("");
 		int offset = 0;
+		int mi = 0;
 		boolean inserted = false;
 		for (int i = 0; i < texts.size(); i++) {
 			String piece = texts.get(i);
-			int pieceStart = offset;
-			int pieceEnd = offset + piece.length();
-			offset = pieceEnd;
-			if (pieceEnd <= start || pieceStart >= end) {
-				result.append(Component.literal(piece).withStyle(styles.get(i)));
-				continue;
+			Style style = styles.get(i);
+			int p = 0;
+			while (p < piece.length()) {
+				int global = offset + p;
+				if (mi >= matches.size()) {
+					result.append(Component.literal(piece.substring(p)).withStyle(style));
+					p = piece.length();
+					continue;
+				}
+				Match match = matches.get(mi);
+				if (global < match.start()) {
+					int take = Math.min(piece.length() - p, match.start() - global);
+					result.append(Component.literal(piece.substring(p, p + take)).withStyle(style));
+					p += take;
+				} else {
+					if (!inserted) {
+						inserted = true;
+						result.append(badgeAndName(match.name(), legacyColors));
+					}
+					int skip = Math.min(piece.length() - p, match.end() - global);
+					p += skip;
+					if (offset + p >= match.end()) {
+						mi++;
+						inserted = false;
+					}
+				}
 			}
-			if (pieceStart < start) {
-				result.append(Component.literal(piece.substring(0, start - pieceStart)).withStyle(styles.get(i)));
-			}
-			if (!inserted) {
-				inserted = true;
-				result.append(badgeAndName(name, true)); // (only the tab list uses this)
-			}
-			if (pieceEnd > end) {
-				result.append(Component.literal(piece.substring(end - pieceStart)).withStyle(styles.get(i)));
-			}
+			offset += piece.length();
 		}
 		return result;
 	}
