@@ -41,7 +41,7 @@ Parz updates itself from the GitHub releases.
 | `/pz dungeon` | Prints what the dungeon scanner currently sees (useful for bug reports) |
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
-| `/pz name` | Menu to choose how your name looks to other Parz users (also `/pz name json <text component>` and `/pz name reset`) |
+| `/pz customname` | Menu to choose how your name looks to other Parz users (also `/pz customname json <text component>` and `/pz customname reset`) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -123,7 +123,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 
 ### Other
 - **Badge / name**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab
-  list and above the head, so you can see who else has the mod. With `/pz name` everybody chooses their own look:
+  list and above the head, so you can see who else has the mod. With `/pz customname` everybody chooses their own look:
   the brackets, the symbol (any text) and the colors, or a Minecraft text component in JSON (`{name}` stands for the
   real name; at most 48 characters and 16 colored pieces; clicks and hover texts are removed). It is saved in
   `config/parz-badge.json` and stays until you change or reset it. To know who uses Parz and how they want to look, the mod reports your Minecraft **name and
