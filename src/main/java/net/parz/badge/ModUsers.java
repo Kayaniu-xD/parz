@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class ModUsers {
 	/** The address of the registry (the Cloudflare Worker of server/), without a slash at the end. */
-	private static final String REGISTRY_URL = "";
+	private static final String REGISTRY_URL = "https://parz-registry.parzmod.workers.dev";
 	private static final Path OVERRIDE = FabricLoader.getInstance().getConfigDir().resolve("parz-registry.txt");
 	private static final long REGISTER_EVERY_MS = 3 * 60_000L;
 
