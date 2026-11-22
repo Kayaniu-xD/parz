@@ -228,7 +228,7 @@ public final class FishingPuzzle {
 		}
 		// the name tag of a creature: while it is there it lives. This also finds a creature whose spawn message
 		// was not seen (somebody else fished it up, you joined late, ...).
-		if (++scanTick >= (active != null ? 1 : 10)) {
+		if (++scanTick >= (active != null ? 1 : 5)) {
 			scanTick = 0;
 			Creature seen = null;
 			double distance = 0;
@@ -241,7 +241,7 @@ public final class FishingPuzzle {
 				}
 				// the name tag, or the name of the mob itself
 				Component component = entity.hasCustomName() && entity.getCustomName() != null ? entity.getCustomName() : entity.getName();
-				String name = component.getString().toLowerCase(Locale.ROOT); // (no formatting codes in a component text)
+				String name = FORMATTING.matcher(component.getString()).replaceAll("").toLowerCase(Locale.ROOT);
 				// a new floating number next to a mob: damage that you did (the server only shows you your own)
 				if (entity.tickCount <= 40 && DAMAGE_NUMBER.matcher(name).matches()) {
 					numbers.add(entity.position());
