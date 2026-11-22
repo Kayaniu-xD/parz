@@ -39,6 +39,12 @@ public final class ParzConfigDefinition {
 			"Shows the /pets menu in the Parz book design: pet list on the left, details and buttons on the right.",
 			true);
 
+	public static final Toggle NO_HURT_SHAKE = GENERAL.toggle(
+			"general.no_hurt_shake",
+			"Remove Damage Shake",
+			"Removes the screen shaking (the camera tilt) when you take damage. The red flash stays, so you still see that you were hit.",
+			false);
+
 	// ---- Dashboard & HUD ---------------------------------------------------------
 	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/pz dash) and HUD trackers (/pz hud).");
 

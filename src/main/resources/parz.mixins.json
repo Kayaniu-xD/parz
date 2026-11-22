@@ -6,7 +6,8 @@
 		"BlindnessFogMixin",
 		"SkyBlockMenuMixin",
 		"PetsMenuMixin",
-		"DragonPacketsMixin"
+		"DragonPacketsMixin",
+		"HurtShakeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
