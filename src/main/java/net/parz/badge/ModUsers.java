@@ -41,19 +41,44 @@ public final class ModUsers {
 	private ModUsers() {
 	}
 
+	private static ScheduledExecutorService executor;
+	/** How the other users want their name to look (key: lower case name). */
+	private static volatile java.util.Map<String, java.util.List<BadgeFormat.Run>> formats = java.util.Map.of();
+
 	public static void register() {
-		ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+		executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
 			Thread thread = new Thread(runnable, "parz-registry");
 			thread.setDaemon(true);
 			return thread;
 		});
-		executor.scheduleWithFixedDelay(() -> {
-			try {
-				refresh();
-			} catch (Exception e) {
-				Debug.log("badge", () -> "registry: " + e);
-			}
-		}, 5, 60, TimeUnit.SECONDS);
+		executor.scheduleWithFixedDelay(ModUsers::safeRefresh, 5, 60, TimeUnit.SECONDS);
+	}
+
+	private static void safeRefresh() {
+		try {
+			refresh();
+		} catch (Exception e) {
+			Debug.log("badge", () -> "registry: " + e);
+		}
+	}
+
+	/** You changed how your name looks: it is sent to the registry at once and the tab list is drawn again. */
+	public static void formatChanged() {
+		version++;
+		lastRegister = 0;
+		if (executor != null) {
+			executor.execute(ModUsers::safeRefresh);
+		}
+	}
+
+	/** How a player wants the name to look: your own format for you, the one of the registry for the others, or the default. */
+	public static java.util.List<BadgeFormat.Run> formatOf(String name) {
+		Minecraft client = Minecraft.getInstance();
+		if (name != null && client.getUser() != null && client.getUser().getName().equalsIgnoreCase(name)) {
+			return BadgeConfig.runs();
+		}
+		java.util.List<BadgeFormat.Run> runs = name == null ? null : formats.get(name.toLowerCase(Locale.ROOT));
+		return runs != null ? runs : BadgeConfig.defaultRuns();
 	}
 
 	/** Accounts that always have the badge (the developer), also when the registry is not reachable. */
@@ -122,7 +147,11 @@ public final class ModUsers {
 		long now = System.currentTimeMillis();
 		if (now - lastRegister >= REGISTER_EVERY_MS) {
 			UUID id = client.getUser().getProfileId();
-			String json = "{\"name\":\"" + client.getUser().getName() + "\",\"uuid\":\"" + id.toString().replace("-", "") + "\"}";
+			JsonObject registration = new JsonObject();
+			registration.addProperty("name", client.getUser().getName());
+			registration.addProperty("uuid", id.toString().replace("-", ""));
+			registration.addProperty("format", BadgeConfig.wire());
+			String json = registration.toString();
 			HttpResponse<String> response = http.send(HttpRequest.newBuilder(URI.create(base + "/register"))
 							.header("Content-Type", "application/json")
 							.header("User-Agent", "ParzMod")
@@ -145,10 +174,20 @@ public final class ModUsers {
 		for (JsonElement element : body.getAsJsonArray("users")) {
 			names.add(element.getAsString().toLowerCase(Locale.ROOT));
 		}
-		if (!names.equals(online)) {
+		java.util.Map<String, java.util.List<BadgeFormat.Run>> newFormats = new java.util.HashMap<>();
+		if (body.has("formats") && body.get("formats").isJsonObject()) {
+			for (java.util.Map.Entry<String, JsonElement> entry : body.getAsJsonObject("formats").entrySet()) {
+				java.util.List<BadgeFormat.Run> runs = BadgeFormat.fromWire(entry.getValue().getAsString());
+				if (runs != null) {
+					newFormats.put(entry.getKey().toLowerCase(Locale.ROOT), runs);
+				}
+			}
+		}
+		if (!names.equals(online) || !newFormats.equals(formats)) {
 			version++;
 		}
 		online = names;
+		formats = newFormats;
 		Debug.log("badge", () -> "Parz users online: " + names.size());
 	}
 }

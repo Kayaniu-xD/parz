@@ -3,7 +3,6 @@ package net.parz.badge;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,23 +15,15 @@ import java.util.Optional;
  * only changes how the name is drawn on your own screen.
  */
 public final class PlayerBadge {
-	private static final TextColor RED = TextColor.fromRgb(0xFF5555);
-	private static final TextColor GOLD = TextColor.fromRgb(0xFFAA00);
 	/** The symbol in the middle of the brackets (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
 
 	private PlayerBadge() {
 	}
 
-	/** "[ዞ] Name" in the colors of the badge. */
+	/** The name in the format its player chose (default: "[ዞ] Name"). */
 	private static MutableComponent badgeAndName(String playerName) {
-		MutableComponent result = Component.literal("");
-		result.append(Component.literal("[").withStyle(style -> style.withColor(RED)));
-		result.append(Component.literal(SYMBOL).withStyle(style -> style.withColor(GOLD)));
-		result.append(Component.literal("]").withStyle(style -> style.withColor(RED)));
-		result.append(Component.literal(" "));
-		result.append(Component.literal(playerName).withStyle(style -> style.withColor(RED)));
-		return result;
+		return BadgeFormat.render(ModUsers.formatOf(playerName), playerName);
 	}
 
 	/** The name as "[ዞ] Name" if it is a badge account (by its profile name), otherwise unchanged. */

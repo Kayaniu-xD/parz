@@ -51,6 +51,7 @@ public class ParzClient implements ClientModInitializer {
 		Debug.register();
 		net.parz.hollows.NucleusSlot.register();
 		net.parz.fishing.FishingPuzzle.register();
+		net.parz.badge.BadgeConfig.load();
 		net.parz.badge.ModUsers.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
@@ -107,6 +108,20 @@ public class ParzClient implements ClientModInitializer {
 								net.parz.fishing.FishingPuzzle.test("ragnarok");
 								return 1;
 							})))
+					.then(ClientCommands.literal("name")
+							.executes(context -> {
+								screenToOpen = net.parz.gui.NameScreen::new;
+								return 1;
+							})
+							.then(ClientCommands.literal("reset").executes(context -> {
+								net.parz.badge.BadgeConfig.reset();
+								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Your name is back to the default.")
+										.withStyle(net.minecraft.ChatFormatting.GREEN));
+								return 1;
+							}))
+							.then(ClientCommands.literal("json").then(ClientCommands.argument("text", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(context -> {
+								return nameJson(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "text"));
+							}))))
 					.then(ClientCommands.literal("help").executes(context -> {
 							sendHelp(context.getSource());
 							return 1;
@@ -147,6 +162,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
+			{"pz name", "Choose how your name looks to other Parz users (menu, or /pz name json <json>)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
@@ -164,6 +180,25 @@ public class ParzClient implements ClientModInitializer {
 		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Debug mode is " + (Debug.isOn() ? "ON" : "OFF")
 				+ (on == null ? " (use /pz debug on or /pz debug off)" : ""))
 				.withStyle(Debug.isOn() ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
+		return 1;
+	}
+
+	/** /pz name json <text component>: your name from a JSON text. */
+	private static int nameJson(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String text) {
+		net.parz.badge.BadgeConfig.Data data = new net.parz.badge.BadgeConfig.Data();
+		data.json = true;
+		data.jsonText = text;
+		try {
+			net.parz.badge.BadgeConfig.apply(data);
+		} catch (IllegalArgumentException e) {
+			source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] " + e.getMessage())
+					.withStyle(net.minecraft.ChatFormatting.RED));
+			return 0;
+		}
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Your name now looks like this: ")
+				.withStyle(net.minecraft.ChatFormatting.GREEN)
+				.append(net.parz.badge.BadgeFormat.render(net.parz.badge.BadgeConfig.runs(),
+						net.minecraft.client.Minecraft.getInstance().getUser().getName())));
 		return 1;
 	}
 
