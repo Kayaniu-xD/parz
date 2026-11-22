@@ -117,6 +117,27 @@ public final class PlayerBadge {
 		return result;
 	}
 
+	/** Names that were looked at: the result per text object (teams give the same object again and again). */
+	private static final java.util.Map<Component, Object[]> TEAM_CACHE = new java.util.IdentityHashMap<>();
+
+	/** applyInText for the prefix and suffix of scoreboard teams, remembered per text (it is asked for in every frame). */
+	public static synchronized Component applyToTeamText(Component original) {
+		if (original == null) {
+			return null;
+		}
+		int version = ModUsers.version();
+		Object[] cached = TEAM_CACHE.get(original);
+		if (cached != null && (int) cached[0] == version) {
+			return (Component) cached[1];
+		}
+		if (TEAM_CACHE.size() > 600) {
+			TEAM_CACHE.clear();
+		}
+		Component result = applyInText(original);
+		TEAM_CACHE.put(original, new Object[]{version, result});
+		return result;
+	}
+
 	private static boolean isNameChar(char c) {
 		return Character.isLetterOrDigit(c) || c == '_';
 	}

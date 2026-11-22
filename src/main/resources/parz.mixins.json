@@ -9,7 +9,8 @@
 		"DragonPacketsMixin",
 		"HurtShakeMixin",
 		"TabBadgeMixin",
-		"NameTagBadgeMixin"
+		"NameTagBadgeMixin",
+		"TeamBadgeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
