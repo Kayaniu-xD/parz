@@ -7,7 +7,9 @@
 		"SkyBlockMenuMixin",
 		"PetsMenuMixin",
 		"DragonPacketsMixin",
-		"HurtShakeMixin"
+		"HurtShakeMixin",
+		"TabBadgeMixin",
+		"NameTagBadgeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
