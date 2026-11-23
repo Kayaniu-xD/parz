@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.entity.Avatar;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -51,7 +52,10 @@ public abstract class ArmorLookExtractMixin {
 				}
 			}
 			((ArmorLookHolder) (Object) state).parz$setArmorLook(look);
-			if (look != null && look.skin() != null && !state.headEquipment.isEmpty()) {
+			// headEquipment only holds helmets with an armor model; a SkyBlock helmet that is a player head (or any block or
+			// item worn on the head) is drawn by the head layer instead, so the worn item itself has to be looked at
+			boolean wearsHelmet = !state.headEquipment.isEmpty() || !entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty();
+			if (look != null && look.skin() != null && wearsHelmet) {
 				// only a player who really wears something on the head gets the custom head
 				state.wornHeadType = SkullBlock.Types.PLAYER;
 				state.wornHeadProfile = look.headProfile();
