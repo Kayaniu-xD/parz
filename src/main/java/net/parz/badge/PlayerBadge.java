@@ -87,7 +87,10 @@ public final class PlayerBadge {
 					break;
 				}
 				int after = index + candidate.length();
-				boolean wordStart = index == 0 || !isNameChar(lower.charAt(index - 1));
+				// "§6Pay2Loze": mods that reformat the chat write the old color codes into the text, and the code letter
+				// right before the name must not count as part of it
+				boolean afterColorCode = index >= 2 && lower.charAt(index - 2) == '§';
+				boolean wordStart = index == 0 || afterColorCode || !isNameChar(lower.charAt(index - 1));
 				boolean wordEnd = after >= lower.length() || !isNameChar(lower.charAt(after));
 				if (wordStart && wordEnd) {
 					found.add(new Match(index, after, text.substring(index, after)));
