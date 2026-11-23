@@ -63,6 +63,11 @@ public abstract class ArmorLookRenderMixin {
 						equippable.equipOnInteract(), equippable.canBeSheared(), equippable.shearingSound()));
 			}
 			copy.remove(DataComponents.TRIM);
+			// Animated dyes (and custom armor models of resource packs / other mods) are looked up by the data of the item
+			// (its SkyBlock id, the dye it carries, custom model data), not by the color: without this data the copy is plain
+			// dyed leather armor, and the animation (or the other mod) cannot take the color away again
+			copy.remove(DataComponents.CUSTOM_DATA);
+			copy.remove(DataComponents.CUSTOM_MODEL_DATA);
 			copy.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
 			return copy;
 		} catch (RuntimeException e) {
