@@ -16,6 +16,7 @@
 		"ArmorLookExtractMixin",
 		"ArmorLookRenderMixin",
 		"ArmorLookSubmitMixin",
+		"ArmorSlotIconMixin",
 		"WindowTitleMixin",
 		"WindowSetTitleMixin"
 	],

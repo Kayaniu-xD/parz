@@ -5,7 +5,12 @@ import com.google.common.collect.Multimap;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.item.component.ResolvableProfile;
 
 import java.nio.charset.StandardCharsets;
@@ -46,6 +51,37 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 			case FEET -> feet;
 			default -> null;
 		};
+	}
+
+	private static final Map<String, ItemStack> HEAD_ICONS = new ConcurrentHashMap<>();
+	private static final Map<Long, ItemStack> ARMOR_ICONS = new ConcurrentHashMap<>();
+
+	/**
+	 * What an armor slot of your inventory shows: the real item is replaced by the item of this look (the head as a player head
+	 * with the chosen texture, a colored piece as dyed leather armor). Empty slots and pieces without a choice stay as they are.
+	 */
+	public ItemStack displayItem(EquipmentSlot slot, ItemStack real) {
+		if (real.isEmpty()) {
+			return real;
+		}
+		if (slot == EquipmentSlot.HEAD) {
+			return skin == null ? real : HEAD_ICONS.computeIfAbsent(skin, h -> {
+				ItemStack head = new ItemStack(Items.PLAYER_HEAD);
+				head.set(DataComponents.PROFILE, profileFor(h));
+				return head;
+			});
+		}
+		Integer rgb = color(slot);
+		if (rgb == null) {
+			return real;
+		}
+		Item item = slot == EquipmentSlot.CHEST ? Items.LEATHER_CHESTPLATE : slot == EquipmentSlot.LEGS ? Items.LEATHER_LEGGINGS : Items.LEATHER_BOOTS;
+		long key = (long) slot.ordinal() << 32 | (rgb & 0xFFFFFFL);
+		return ARMOR_ICONS.computeIfAbsent(key, k -> {
+			ItemStack stack = new ItemStack(item);
+			stack.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
+			return stack;
+		});
 	}
 
 	public ArmorLook withSkin(String hash) {
