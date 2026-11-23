@@ -66,11 +66,15 @@ public final class PlayerBadge {
 	}
 
 	/**
-	 * The name tag of a slayer boss: "Spawned by: Name" is written over the boss for the player who spawned it. Only that
-	 * line is changed (other custom names are left alone, and nothing is done for texts without "Spawned by").
+	 * The name tag of a slayer boss: Hypixel writes "Name's SLAYER BOSS" (older: "Spawned by: Name") over the boss for the player
+	 * who spawned it. Only that line is changed (other custom names are left alone).
 	 */
 	public static Component applyInSlayerTag(Component original) {
-		if (original == null || !original.getString().contains("Spawned by")) {
+		if (original == null) {
+			return null;
+		}
+		String text = original.getString();
+		if (!text.contains("SLAYER BOSS") && !text.contains("Spawned by")) {
 			return original;
 		}
 		return replaceNames(original, 1, false);
