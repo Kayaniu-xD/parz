@@ -42,6 +42,7 @@ Parz updates itself from the GitHub releases.
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
 | `/pz customname` | Menu to choose how your name looks to other Parz users (also `/pz customname json <text component>` and `/pz customname reset`) |
+| `/pz customarmor` | Menu to choose your head (any SkyBlock head item) and the colors of your armor for other Parz users (also `/pz customarmor #RRGGBB` and `/pz customarmor reset`) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -132,6 +133,15 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
   the list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
   minutes after the last report. If the registry is not reachable, only your own account (and `Pay2Loze`) get the badge.
+- **Custom armor** (`/pz customarmor`): a menu with a preview of your player. Pick a slot under the preview and click
+  what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) is shown
+  instead of your helmet; the list comes from the public Hypixel items API, is saved in `config/parz-heads.json` and
+  can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
+  the search box (only leather armor can show a color; that is a limit of Minecraft). "Same color on all pieces" copies the
+  color of the selected slot to the other two. Your choice is saved at once in `config/parz-armor.json` and sent to
+  the registry, so every Parz user sees it within about a minute, and it is still there the next time you start the
+  game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot
+  that is not empty, and your chosen colors win over the dye the armor already has.
 - **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.

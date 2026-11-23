@@ -225,7 +225,7 @@ if (!mcVariant) {
 						logger.warn('GitHub upload skipped: git user.email in this repository is not the GitHub noreply address')
 						return
 					}
-					def paths = ['src', 'build.gradle', 'settings.gradle', 'gradle.properties', '.gitignore'].findAll { file(it).exists() }
+					def paths = ['src', 'server', 'README.md', 'build.gradle', 'settings.gradle', 'gradle.properties', '.gitignore'].findAll { file(it).exists() }
 					run(['git', 'add', '--'] + paths)
 					if (run(['git', 'diff', '--cached', '--quiet'])[0] != 0) {
 						def commit = run(['git', 'commit', '-m', "Release ${tag}".toString()])
@@ -333,8 +333,52 @@ if (!mcVariant) {
 		}
 	}
 
+	// ---- deploy the registry --------------------------------------------------------------------
+	// The registry (server/worker.js, a Cloudflare Worker) is what shares badges, name looks and armor looks between
+	// players. After a build, when server/worker.js or server/wrangler.toml changed since the last deploy, it is
+	// deployed with wrangler (needs `npx wrangler login` once). Never fails the build. Skip it with: gradlew build -PnoDeploy
+	tasks.register('deployRegistry') {
+		mustRunAfter 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants', 'pruneOldVersions', 'publishRelease'
+		doLast {
+			if (project.hasProperty('noDeploy')) {
+				logger.lifecycle('Registry deploy skipped (-PnoDeploy)')
+				return
+			}
+			def serverDir = file('server')
+			def hashFile = file('.gradle/parz-registry-hash')
+			if (!new File(serverDir, 'worker.js').exists()) {
+				return
+			}
+			def digest = java.security.MessageDigest.getInstance('SHA-256')
+			['worker.js', 'wrangler.toml'].each { name ->
+				def f = new File(serverDir, name)
+				if (f.exists()) {
+					digest.update(f.bytes)
+				}
+			}
+			def hash = digest.digest().collect { String.format('%02x', it) }.join()
+			if (hashFile.exists() && hashFile.getText('UTF-8').trim() == hash) {
+				return
+			}
+			try {
+				def windows = System.getProperty('os.name').toLowerCase().contains('win')
+				def command = windows ? ['cmd', '/c', 'npx', '--yes', 'wrangler', 'deploy'] : ['npx', '--yes', 'wrangler', 'deploy']
+				def process = new ProcessBuilder(command).directory(serverDir).redirectErrorStream(true).start()
+				def out = process.inputStream.getText('UTF-8')
+				if (process.waitFor() == 0) {
+					hashFile.setText(hash, 'UTF-8')
+					logger.lifecycle('Deployed the registry (server/worker.js)')
+				} else {
+					logger.warn("Registry deploy failed (the next build tries again): " + out.readLines().takeRight(8).join(' | '))
+				}
+			} catch (Exception e) {
+				logger.warn("Registry deploy failed: ${e.message}")
+			}
+		}
+	}
+
 	tasks.named('build') {
-		finalizedBy 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants', 'pruneOldVersions', 'publishRelease'
+		finalizedBy 'copyReleaseJar', 'archiveOldJars', 'buildMcVariants', 'pruneOldVersions', 'publishRelease', 'deployRegistry'
 	}
 
 }
