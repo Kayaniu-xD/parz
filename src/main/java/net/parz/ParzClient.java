@@ -230,7 +230,7 @@ public class ParzClient implements ClientModInitializer {
 			return 0;
 		}
 		net.parz.armor.ArmorConfig.set(net.parz.armor.ArmorConfig.look().withAllColors(rgb));
-		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your leather armor. Use /pz customarmor for the menu.")
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your chestplate, leggings and boots. Use /pz customarmor for the menu.")
 				.withStyle(net.minecraft.ChatFormatting.GREEN));
 		return 1;
 	}

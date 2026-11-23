@@ -8,16 +8,21 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.DyedItemColor;
+import net.minecraft.world.item.equipment.EquipmentAssets;
+import net.minecraft.world.item.equipment.Equippable;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.ArmorLookHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
+import java.util.Optional;
+
 /**
- * Other Parz users see the armor look you chose with /pz customarmor: your colors on the armor pieces that can
- * show a color at all (leather armor; other materials are not affected - that is how Minecraft itself renders
- * armor), and your head instead of the helmet. The color you chose also wins over a dye the item already has.
+ * Other Parz users see the armor look you chose with /pz customarmor: your head instead of the helmet and your
+ * colors on the chestplate, leggings and boots. A colored piece is drawn as dyed leather armor, whatever the real
+ * armor is: Minecraft only dyes armor whose equipment model can be dyed, and armor from SkyBlock (or iron, diamond,
+ * ...) uses its own model, so a dye on the item alone would change nothing.
  */
 @Mixin(HumanoidArmorLayer.class)
 public abstract class ArmorLookRenderMixin {
@@ -49,6 +54,15 @@ public abstract class ArmorLookRenderMixin {
 				return itemStack;
 			}
 			ItemStack copy = itemStack.copy();
+			Equippable equippable = copy.get(DataComponents.EQUIPPABLE);
+			if (equippable != null && !Optional.of(EquipmentAssets.LEATHER).equals(equippable.assetId())) {
+				// the same piece of armor, but with the (dyeable) leather model
+				copy.set(DataComponents.EQUIPPABLE, new Equippable(equippable.slot(), equippable.equipSound(),
+						Optional.of(EquipmentAssets.LEATHER), equippable.cameraOverlay(), equippable.allowedEntities(),
+						equippable.dispensable(), equippable.swappable(), equippable.damageOnHurt(),
+						equippable.equipOnInteract(), equippable.canBeSheared(), equippable.shearingSound()));
+			}
+			copy.remove(DataComponents.TRIM);
 			copy.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
 			return copy;
 		} catch (RuntimeException e) {

@@ -18,8 +18,8 @@ import java.util.regex.Pattern;
 
 /**
  * How a player wants their armor to look for other Parz users: a head (the texture of any SkyBlock head item,
- * shown instead of the helmet) and a color for the chestplate, leggings and boots (shown on leather armor, which is
- * the only armor Minecraft can dye). Every part is optional; null means "not changed".
+ * shown instead of the helmet) and a color for the chestplate, leggings and boots (each piece is then drawn as
+ * dyed leather armor in that color). Every part is optional; null means "not changed".
  *
  * @param skin  the texture hash of the head (the last part of the textures.minecraft.net address), or null
  * @param chest 0xRRGGBB for the chestplate, or null

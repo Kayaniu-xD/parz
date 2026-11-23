@@ -28,7 +28,7 @@ import java.util.Map;
 /**
  * /pz customarmor - how your armor looks to the other Parz users. Pick a slot below the preview (helmet,
  * chestplate, leggings, boots) and click what you want in the grid: for the helmet any SkyBlock head (armor heads,
- * minions, ...), for the other slots a color (leather armor is the only armor Minecraft can dye). A click is saved
+ * minions, ...), for the other slots a color (the piece is then drawn as leather armor in that color). A click is saved
  * at once and sent to the registry, so everybody sees it; the preview shows it right away.
  */
 public class ArmorScreen extends Screen {
@@ -247,7 +247,7 @@ public class ArmorScreen extends Screen {
 		if (!status.isEmpty()) {
 			graphics.text(font, status, leftX(), py + PANEL_H - 16, 0xFF7CE08F, false);
 		} else {
-			graphics.text(font, "Only leather armor can show a color; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
+			graphics.text(font, "A color draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
 		}
 	}
 
