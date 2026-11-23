@@ -12,9 +12,9 @@
 		"NameTagBadgeMixin",
 		"TeamBadgeMixin",
 		"ChatBadgeMixin",
-		"ArmorColorStateMixin",
-		"ArmorColorExtractMixin",
-		"ArmorColorRenderMixin"
+		"ArmorLookStateMixin",
+		"ArmorLookExtractMixin",
+		"ArmorLookRenderMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

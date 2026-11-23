@@ -44,8 +44,8 @@ public final class ModUsers {
 	private static ScheduledExecutorService executor;
 	/** How the other users want their name to look (key: lower case name). */
 	private static volatile java.util.Map<String, java.util.List<BadgeFormat.Run>> formats = java.util.Map.of();
-	/** The armor color other users chose (key: lower case name, value: 0xRRGGBB). Only present if they set one. */
-	private static volatile java.util.Map<String, Integer> armorColors = java.util.Map.of();
+	/** The armor look other users chose (key: lower case name). Only present if they chose something. */
+	private static volatile java.util.Map<String, net.parz.armor.ArmorLook> armors = java.util.Map.of();
 
 	public static void register() {
 		executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
@@ -73,8 +73,8 @@ public final class ModUsers {
 		}
 	}
 
-	/** You changed your armor color: it is sent to the registry at once. */
-	public static void armorColorChanged() {
+	/** You changed your armor look (head, colors): it is sent to the registry at once, so everybody sees it. */
+	public static void armorChanged() {
 		version++;
 		lastRegister = 0;
 		if (executor != null) {
@@ -83,15 +83,16 @@ public final class ModUsers {
 	}
 
 	/**
-	 * The armor color a Parz user wants to show (0xRRGGBB), or null if they did not set one: your own choice for
-	 * you, the one the registry reported for someone else, or null for everyone not on Parz.
+	 * The armor look a Parz user wants to show: your own choice for you, the one the registry reported for
+	 * someone else, or null if there is none (also for everyone who is not on Parz).
 	 */
-	public static Integer armorColorOf(String name) {
+	public static net.parz.armor.ArmorLook armorLookOf(String name) {
 		Minecraft client = Minecraft.getInstance();
 		if (name != null && client.getUser() != null && client.getUser().getName().equalsIgnoreCase(name)) {
-			return ArmorColorConfig.color();
+			net.parz.armor.ArmorLook own = net.parz.armor.ArmorConfig.look();
+			return own.isEmpty() ? null : own;
 		}
-		return name == null ? null : armorColors.get(name.toLowerCase(Locale.ROOT));
+		return name == null ? null : armors.get(name.toLowerCase(Locale.ROOT));
 	}
 
 	/** How a player wants the name to look: your own format for you, the one of the registry for the others, or the default. */
@@ -174,7 +175,7 @@ public final class ModUsers {
 			registration.addProperty("name", client.getUser().getName());
 			registration.addProperty("uuid", id.toString().replace("-", ""));
 			registration.addProperty("format", BadgeConfig.wire());
-			registration.addProperty("armorColor", ArmorColorConfig.wire());
+			registration.addProperty("armor", net.parz.armor.ArmorConfig.wire());
 			String json = registration.toString();
 			HttpResponse<String> response = http.send(HttpRequest.newBuilder(URI.create(base + "/register"))
 							.header("Content-Type", "application/json")
@@ -207,22 +208,25 @@ public final class ModUsers {
 				}
 			}
 		}
-		java.util.Map<String, Integer> newArmorColors = new java.util.HashMap<>();
-		if (body.has("armorColors") && body.get("armorColors").isJsonObject()) {
-			for (java.util.Map.Entry<String, JsonElement> entry : body.getAsJsonObject("armorColors").entrySet()) {
+		java.util.Map<String, net.parz.armor.ArmorLook> newArmors = new java.util.HashMap<>();
+		if (body.has("armors") && body.get("armors").isJsonObject()) {
+			for (java.util.Map.Entry<String, JsonElement> entry : body.getAsJsonObject("armors").entrySet()) {
 				try {
-					newArmorColors.put(entry.getKey().toLowerCase(Locale.ROOT), Integer.parseInt(entry.getValue().getAsString(), 16));
+					net.parz.armor.ArmorLook look = net.parz.armor.ArmorLook.fromWire(entry.getValue().getAsString());
+					if (look != null) {
+						newArmors.put(entry.getKey().toLowerCase(Locale.ROOT), look);
+					}
 				} catch (RuntimeException ignored) {
 					// an invalid entry from the registry is skipped
 				}
 			}
 		}
-		if (!names.equals(online) || !newFormats.equals(formats) || !newArmorColors.equals(armorColors)) {
+		if (!names.equals(online) || !newFormats.equals(formats) || !newArmors.equals(armors)) {
 			version++;
 		}
 		online = names;
 		formats = newFormats;
-		armorColors = newArmorColors;
+		armors = newArmors;
 		Debug.log("badge", () -> "Parz users online: " + names.size());
 	}
 }
