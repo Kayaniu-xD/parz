@@ -1,7 +1,7 @@
-package net.parz.mixin;
+package net.parz.badge;
 
 /**
- * Added (by {@link ArmorColorStateMixin}) to the render state of every player, so the armor-rendering mixin
+ * Added (by {@link net.parz.mixin.ArmorColorStateMixin}) to the render state of every player, so the armor-rendering mixin
  * can read which color, if any, that player chose for their (leather) armor.
  */
 public interface ArmorColorHolder {

@@ -1,5 +1,6 @@
 package net.parz.mixin;
 
+import net.parz.badge.ArmorColorHolder;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;

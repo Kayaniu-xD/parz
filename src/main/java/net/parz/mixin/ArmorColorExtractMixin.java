@@ -1,5 +1,6 @@
 package net.parz.mixin;
 
+import net.parz.badge.ArmorColorHolder;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.entity.Avatar;
