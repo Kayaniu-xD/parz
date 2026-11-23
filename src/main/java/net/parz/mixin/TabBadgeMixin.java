@@ -2,29 +2,22 @@ package net.parz.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.client.Minecraft;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.scores.Objective;
-import net.minecraft.world.scores.Scoreboard;
 import net.parz.badge.ModUsers;
 import net.parz.badge.PlayerBadge;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
@@ -39,47 +32,34 @@ public abstract class TabBadgeMixin {
 	}
 
 	private static final Map<PlayerInfo, Cached> CACHE = new WeakHashMap<>();
-	/** The lines with a badge (they are drawn in the middle of their cell, see parz$center). */
-	private static final Set<Component> BADGED = Collections.newSetFromMap(new WeakHashMap<>());
+	/**
+	 * SkyHanni's compact tab list draws a line only as a player line (head + the text 10 pixels further right) when it can read
+	 * "[level] name" in it. A line with a badge cannot be read, so it is drawn at the left edge, over the place of the head.
+	 * With SkyHanni installed the badge line therefore starts with the 10 pixels the heads take, and the normal tab list
+	 * (which has its own head) draws the line without them. Key: the line with the gap, value: the line without.
+	 */
+	private static final Map<Component, Component> WITHOUT_GAP = Collections.synchronizedMap(new WeakHashMap<>());
+	private static Boolean skyHanni = null;
 
-	@Shadow
-	@Final
-	private Minecraft minecraft;
-
-	@Shadow
-	public abstract Component getNameForDisplay(PlayerInfo info);
-
-	@Shadow
-	private List<PlayerInfo> getPlayerInfos() {
-		throw new AssertionError();
-	}
-
-	/** Width of the widest name of the list = the width every cell reserves for the name. */
-	@Unique
-	private int parz$widestName = 0;
-
-	@Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;ILnet/minecraft/world/scores/Scoreboard;Lnet/minecraft/world/scores/Objective;)V", at = @At("HEAD"))
-	private void parz$measure(GuiGraphicsExtractor graphics, int width, Scoreboard scoreboard, Objective objective, CallbackInfo ci) {
-		try {
-			int widest = 0;
-			for (PlayerInfo info : getPlayerInfos()) {
-				widest = Math.max(widest, minecraft.font.width(getNameForDisplay(info)));
-			}
-			parz$widestName = widest;
-		} catch (RuntimeException e) {
-			parz$widestName = 0;
+	private static Component withGap(Component line) {
+		if (skyHanni == null) {
+			skyHanni = FabricLoader.getInstance().isModLoaded("skyhanni");
 		}
+		if (!skyHanni) {
+			return line;
+		}
+		// two bold spaces: 2 x 5 pixels
+		Component gapped = Component.empty().append(Component.literal("  ").withStyle(ChatFormatting.BOLD)).append(line);
+		WITHOUT_GAP.put(gapped, line);
+		return gapped;
 	}
 
-	/** A line with a badge is drawn in the middle of the space of its cell instead of at the left edge. */
+	/** The normal tab list draws the line without the gap (it has the head there). */
 	@WrapOperation(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;ILnet/minecraft/world/scores/Scoreboard;Lnet/minecraft/world/scores/Objective;)V",
 			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"))
-	private void parz$center(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color, Operation<Void> original) {
-		int shift = 0;
-		if (BADGED.contains(name)) {
-			shift = Math.max(0, (parz$widestName - font.width(name)) / 2);
-		}
-		original.call(graphics, font, name, x + shift, y, color);
+	private void parz$withoutGap(GuiGraphicsExtractor graphics, Font font, Component name, int x, int y, int color, Operation<Void> original) {
+		Component plain = WITHOUT_GAP.get(name);
+		original.call(graphics, font, plain != null ? plain : name, x, y, color);
 	}
 
 	@Inject(method = "getNameForDisplay", at = @At("RETURN"), cancellable = true)
@@ -91,7 +71,6 @@ public abstract class TabBadgeMixin {
 			Cached cached = CACHE.get(info);
 			if (cached != null && cached.displayName() == displayName && cached.version() == version) {
 				if (cached.result() != null) {
-					BADGED.add(cached.result());
 					cir.setReturnValue(cached.result());
 				}
 				return;
@@ -101,10 +80,9 @@ public abstract class TabBadgeMixin {
 			if (changed == shown) {
 				changed = PlayerBadge.applyInText(shown);
 			}
-			Component result = changed == shown ? null : changed;
+			Component result = changed == shown ? null : withGap(changed);
 			CACHE.put(info, new Cached(displayName, version, result));
 			if (result != null) {
-				BADGED.add(result);
 				cir.setReturnValue(result);
 			}
 		} catch (RuntimeException ignored) {
