@@ -81,17 +81,13 @@ public final class ArmorConfig {
 	}
 
 	private static Integer rgb(JsonObject json, String key) {
-		try {
-			String text = text(json, key);
-			return text == null ? null : Integer.parseInt(text, 16) & 0xFFFFFF;
-		} catch (NumberFormatException e) {
-			return null;
-		}
+		return ArmorLook.rgb(text(json, key));
 	}
 
-	private static void add(JsonObject json, String key, Integer rgb) {
-		if (rgb != null) {
-			json.addProperty(key, String.format("%06x", rgb & 0xFFFFFF));
+	private static void add(JsonObject json, String key, Integer color) {
+		String text = ArmorLook.hex(color);
+		if (!text.isEmpty()) {
+			json.addProperty(key, text);
 		}
 	}
 }

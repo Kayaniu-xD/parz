@@ -36,7 +36,8 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 
 	/** Texture hashes are 59 to 64 hex digits in practice; this also keeps a bad value from the registry out. */
 	private static final Pattern HASH = Pattern.compile("[0-9a-f]{20,64}");
-	private static final Pattern WIRE = Pattern.compile("([0-9a-f]{20,64})?\\|([0-9a-f]{6})?\\|([0-9a-f]{6})?\\|([0-9a-f]{6})?");
+	/** "skin|chest|legs|feet"; a color is 6 hex digits, or ~name for an animated dye. */
+	private static final Pattern WIRE = Pattern.compile("([0-9a-f]{20,64})?\\|([0-9a-f]{6}|~[a-z_]{1,24})?\\|([0-9a-f]{6}|~[a-z_]{1,24})?\\|([0-9a-f]{6}|~[a-z_]{1,24})?");
 	private static final Map<String, ResolvableProfile> PROFILES = new ConcurrentHashMap<>();
 
 	public boolean isEmpty() {
@@ -51,6 +52,11 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 			case FEET -> feet;
 			default -> null;
 		};
+	}
+
+	/** The color of this armor slot as it is drawn now (an animated dye gives its color of this moment), or null. */
+	public Integer rgb(EquipmentSlot slot) {
+		return AnimatedDyes.resolve(color(slot));
 	}
 
 	private static final Map<String, ItemStack> HEAD_ICONS = new ConcurrentHashMap<>();
@@ -71,7 +77,7 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 				return head;
 			});
 		}
-		Integer rgb = color(slot);
+		Integer rgb = rgb(slot);
 		if (rgb == null) {
 			return real;
 		}
@@ -141,11 +147,31 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 		return skin == null ? null : profileFor(skin);
 	}
 
-	private static String hex(Integer rgb) {
-		return rgb == null ? "" : String.format(Locale.ROOT, "%06x", rgb & 0xFFFFFF);
+	/** A color as text: 6 hex digits, or ~name for an animated dye (empty for none). Also used for the saved file. */
+	public static String hex(Integer color) {
+		if (color == null) {
+			return "";
+		}
+		if (AnimatedDyes.isAnimated(color)) {
+			AnimatedDyes.Dye dye = AnimatedDyes.dyeOf(color);
+			return dye == null ? "" : "~" + dye.id();
+		}
+		return String.format(Locale.ROOT, "%06x", color & 0xFFFFFF);
 	}
 
-	private static Integer rgb(String hex) {
-		return hex == null ? null : Integer.parseInt(hex, 16);
+	/** The color of {@link #hex(Integer)}, or null if it is empty or not valid (an unknown dye too). */
+	public static Integer rgb(String text) {
+		if (text == null || text.isEmpty()) {
+			return null;
+		}
+		if (text.startsWith("~")) {
+			AnimatedDyes.Dye dye = AnimatedDyes.byId(text.substring(1));
+			return dye == null ? null : dye.code();
+		}
+		try {
+			return Integer.parseInt(text, 16) & 0xFFFFFF;
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 }

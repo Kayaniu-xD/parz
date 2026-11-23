@@ -137,7 +137,9 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) is shown
   instead of your helmet; the list comes from the public Hypixel items API, is saved in `config/parz-heads.json` and
   can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
-  the search box (the piece is drawn as leather armor in that color, whatever armor you really wear, SkyBlock armor included). "Same color on all pieces" copies the
+  the search box (the piece is drawn as leather armor in that color, whatever armor you really wear, SkyBlock armor included).
+  The first entries are the **animated dyes** of SkyBlock (Aurora, Rose, Portal, Lucky, ... 24 of them): the piece changes its
+  color the way the dye does, for everybody with Parz (the colors are the frames of the public SkyBlock item repository, 20 per second). "Same color on all pieces" copies the
   color of the selected slot to the other two. Your choice is saved at once in `config/parz-armor.json` and sent to
   the registry, so every Parz user sees it within about a minute, and it is still there the next time you start the
   game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot

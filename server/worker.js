@@ -12,8 +12,9 @@
 
 const TTL_SECONDS = 420;
 const MAX_FORMAT = 700; // KV metadata is limited to 1024 bytes in total
-// "<head texture hash, up to 64 hex>|<chest>|<legs>|<feet>", every part may be empty
-const ARMOR_PATTERN = /^[0-9a-f]{0,64}\|[0-9a-f]{0,6}\|[0-9a-f]{0,6}\|[0-9a-f]{0,6}$/;
+// "<head texture hash, up to 64 hex>|<chest>|<legs>|<feet>", every part may be empty; a color is 6 hex digits or
+// ~name for an animated dye (~aurora)
+const ARMOR_PATTERN = /^[0-9a-f]{0,64}\|(?:[0-9a-f]{0,6}|~[a-z_]{1,24})\|(?:[0-9a-f]{0,6}|~[a-z_]{1,24})\|(?:[0-9a-f]{0,6}|~[a-z_]{1,24})$/;
 
 export default {
 	async fetch(request, env) {

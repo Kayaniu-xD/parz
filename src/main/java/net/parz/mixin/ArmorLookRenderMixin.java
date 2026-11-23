@@ -49,7 +49,7 @@ public abstract class ArmorLookRenderMixin {
 				// the custom head is drawn by the head layer; the helmet itself would only be in the way
 				return look.skin() != null ? ItemStack.EMPTY : itemStack;
 			}
-			Integer rgb = look.color(slot);
+			Integer rgb = look.rgb(slot); // an animated dye: its color of this moment
 			if (rgb == null) {
 				return itemStack;
 			}

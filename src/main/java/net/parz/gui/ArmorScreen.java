@@ -15,6 +15,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.DyedItemColor;
+import net.parz.armor.AnimatedDyes;
 import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.HeadCatalog;
@@ -174,6 +175,11 @@ public class ArmorScreen extends Screen {
 			if (typed != null) {
 				list.add(new Entry(null, typed, "#" + hex(typed)));
 			}
+			for (AnimatedDyes.Dye dye : AnimatedDyes.all()) {
+				if (query.isEmpty() || dye.name().toLowerCase(Locale.ROOT).contains(query) || "animated".contains(query)) {
+					list.add(new Entry(null, dye.code(), dye.name()));
+				}
+			}
 			for (NamedColor color : PALETTE) {
 				if (query.isEmpty() || color.name().toLowerCase(Locale.ROOT).contains(query) || hex(color.rgb()).contains(query.replace("#", ""))) {
 					list.add(new Entry(null, color.rgb(), color.name()));
@@ -213,7 +219,7 @@ public class ArmorScreen extends Screen {
 		Integer color = ArmorConfig.look().color(SLOTS[Math.max(1, slot)]);
 		ArmorConfig.set(ArmorConfig.look().withAllColors(color));
 		status = color == null ? "Colors removed from chestplate, leggings and boots."
-				: "Saved #" + hex(color) + " for chestplate, leggings and boots.";
+				: "Saved " + colorName(color) + " for chestplate, leggings and boots.";
 	}
 
 	// ---- drawing -----------------------------------------------------------------------------
@@ -247,7 +253,7 @@ public class ArmorScreen extends Screen {
 		if (!status.isEmpty()) {
 			graphics.text(font, status, leftX(), py + PANEL_H - 16, 0xFF7CE08F, false);
 		} else {
-			graphics.text(font, "A color draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
+			graphics.text(font, "A color or animated dye draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
 		}
 	}
 
@@ -291,7 +297,7 @@ public class ArmorScreen extends Screen {
 			return look.skin() != null ? headIcon(look.skin()) : armorIcon(Items.LEATHER_HELMET, null);
 		}
 		Item item = index == 1 ? Items.LEATHER_CHESTPLATE : index == 2 ? Items.LEATHER_LEGGINGS : Items.LEATHER_BOOTS;
-		return armorIcon(item, look.color(SLOTS[index]));
+		return armorIcon(item, AnimatedDyes.resolve(look.color(SLOTS[index])));
 	}
 
 	private void drawGrid(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -350,7 +356,11 @@ public class ArmorScreen extends Screen {
 			tip.add(Component.literal(entry.head().id()).withStyle(ChatFormatting.DARK_GRAY));
 		} else {
 			tip.add(Component.literal(entry.label()));
-			tip.add(Component.literal("#" + hex(entry.rgb())).withStyle(ChatFormatting.DARK_GRAY));
+			if (AnimatedDyes.isAnimated(entry.rgb())) {
+				tip.add(Component.literal("Animated dye (SkyBlock)").withStyle(ChatFormatting.LIGHT_PURPLE));
+			} else {
+				tip.add(Component.literal("#" + hex(entry.rgb())).withStyle(ChatFormatting.DARK_GRAY));
+			}
 		}
 		return tip;
 	}
@@ -363,7 +373,7 @@ public class ArmorScreen extends Screen {
 			return headIcon(entry.head().hash());
 		}
 		return armorIcon(SLOTS[slot] == EquipmentSlot.LEGS ? Items.LEATHER_LEGGINGS
-				: SLOTS[slot] == EquipmentSlot.FEET ? Items.LEATHER_BOOTS : Items.LEATHER_CHESTPLATE, entry.rgb());
+				: SLOTS[slot] == EquipmentSlot.FEET ? Items.LEATHER_BOOTS : Items.LEATHER_CHESTPLATE, AnimatedDyes.resolve(entry.rgb()));
 	}
 
 	private static ItemStack headIcon(String hash) {
@@ -476,6 +486,12 @@ public class ArmorScreen extends Screen {
 
 	private static boolean inside(double mx, double my, int x, int y, int w, int h) {
 		return mx >= x && mx < x + w && my >= y && my < y + h;
+	}
+
+	/** "#RRGGBB", or the name of an animated dye. */
+	private static String colorName(int color) {
+		AnimatedDyes.Dye dye = AnimatedDyes.dyeOf(color);
+		return dye != null ? dye.name() : "#" + hex(color);
 	}
 
 	private static String hex(int rgb) {
