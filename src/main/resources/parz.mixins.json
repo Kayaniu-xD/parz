@@ -15,7 +15,9 @@
 		"ArmorLookStateMixin",
 		"ArmorLookExtractMixin",
 		"ArmorLookRenderMixin",
-		"ArmorLookSubmitMixin"
+		"ArmorLookSubmitMixin",
+		"WindowTitleMixin",
+		"WindowSetTitleMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -45,6 +45,23 @@ public final class ParzConfigDefinition {
 			"Removes the screen shaking (the camera tilt) when you take damage. The red flash stays, so you still see that you were hit.",
 			false);
 
+	public static final Toggle TITLE_VANILLA = GENERAL.toggle(
+			"general.title_vanilla",
+			"Vanilla Window Title",
+			"Forces the title of the game window to the vanilla one (\"Minecraft 26.2\"), also when another mod or client renames the window. Only one of the two window title settings can be on.",
+			false);
+
+	public static final Toggle TITLE_FABRIC = GENERAL.toggle(
+			"general.title_fabric",
+			"Fabric Window Title",
+			"Forces the title of the game window to the one of a modded game (\"Minecraft* 26.2\", the star marks mods like Fabric), also when another mod or client renames the window. Only one of the two window title settings can be on.",
+			false);
+
+	static {
+		TITLE_VANILLA.exclusiveWith = TITLE_FABRIC;
+		TITLE_FABRIC.exclusiveWith = TITLE_VANILLA;
+	}
+
 	// ---- Dashboard & HUD ---------------------------------------------------------
 	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/pz dash) and HUD trackers (/pz hud).");
 

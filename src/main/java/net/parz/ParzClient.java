@@ -154,6 +154,7 @@ public class ParzClient implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(Debug.tick("main tick", client -> {
 			ModUpdater.tick(client);
+			net.parz.misc.WindowTitle.tick(client);
 			if (screenToOpen != null) {
 				Screen screen = screenToOpen.get();
 				screenToOpen = null;

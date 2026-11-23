@@ -66,6 +66,8 @@ public final class ConfigModel {
 		public final boolean defaultValue;
 		/** 0 = off, 1 = on; used for the sliding animation. */
 		public float animation;
+		/** A toggle that is switched off when this one is switched on (two choices of the same setting), or null. */
+		public Toggle exclusiveWith;
 
 		public Toggle(String key, String name, String description, boolean defaultValue) {
 			this.key = key;
@@ -79,7 +81,11 @@ public final class ConfigModel {
 		}
 
 		public void flip() {
-			ParzConfig.set(key, !isEnabled());
+			boolean on = !isEnabled();
+			if (on && exclusiveWith != null) {
+				ParzConfig.set(exclusiveWith.key, false);
+			}
+			ParzConfig.set(key, on);
 		}
 
 		public boolean matches(String query) {
