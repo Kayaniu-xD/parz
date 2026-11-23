@@ -14,7 +14,8 @@
 		"ChatBadgeMixin",
 		"ArmorLookStateMixin",
 		"ArmorLookExtractMixin",
-		"ArmorLookRenderMixin"
+		"ArmorLookRenderMixin",
+		"ArmorLookSubmitMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
