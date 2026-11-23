@@ -18,6 +18,7 @@ import net.minecraft.world.item.component.DyedItemColor;
 import net.parz.armor.AnimatedDyes;
 import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
+import net.parz.armor.DyeIcons;
 import net.parz.armor.HeadCatalog;
 import net.parz.armor.StaticDyes;
 
@@ -351,7 +352,7 @@ public class ArmorScreen extends Screen {
 			tip.add(Component.literal(entry.head().name()).withStyle(tierColor(entry.head().tier())));
 			tip.add(Component.literal(entry.head().id()).withStyle(ChatFormatting.DARK_GRAY));
 		} else {
-			tip.add(Component.literal(entry.label()));
+			tip.add(Component.literal(entry.label()).withStyle(DyeIcons.color(entry.label())));
 			if (AnimatedDyes.isAnimated(entry.rgb())) {
 				tip.add(Component.literal("Animated dye (SkyBlock)").withStyle(ChatFormatting.LIGHT_PURPLE));
 			} else {
@@ -367,6 +368,11 @@ public class ArmorScreen extends Screen {
 		}
 		if (entry.head() != null) {
 			return headIcon(entry.head().hash());
+		}
+		// a SkyBlock dye is shown as its item (a head with the texture of the dye), like in the game
+		String dyeHead = DyeIcons.hash(entry.label());
+		if (dyeHead != null) {
+			return headIcon(dyeHead);
 		}
 		return armorIcon(SLOTS[slot] == EquipmentSlot.LEGS ? Items.LEATHER_LEGGINGS
 				: SLOTS[slot] == EquipmentSlot.FEET ? Items.LEATHER_BOOTS : Items.LEATHER_CHESTPLATE, AnimatedDyes.resolve(entry.rgb()));
