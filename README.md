@@ -144,11 +144,12 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   that is not empty, and your chosen colors win over the dye the armor already has. It also works when the Catharsis mod draws custom SkyBlock armor models: for the slots you chose
   something for, Parz switches those custom models off so your head and colors show instead.
 - **Window title** (General settings **Vanilla Window Title** / **Fabric Window Title**): some clients rename the game
-  window (for example to "Nebula Client 2.5.10"). Turn on one of the two to force the title Minecraft itself would use:
-  the vanilla one (`Minecraft 26.2`) or the one of a modded game (`Minecraft* 26.2`, the star is added when mods like
-  Fabric are installed; the part after the version, for example the server, is kept). Only one can be on; with both
-  off the title is not touched. It also works when the other mod writes the title to the window directly: Parz checks it
-  a few times per second and puts the right title back.
+  window (for example to "Nebula Client 2.5.10"). Parz forces the title Minecraft itself would use. **Fabric Window
+  Title** is on by default and gives the title of a modded game (`Minecraft* 26.2`, the star is added when mods like
+  Fabric are installed); turn on **Vanilla Window Title** instead for the plain one (`Minecraft 26.2`). Only one can be
+  on; with both off the title is not touched. The part after the version (Singleplayer, Multiplayer, ...) is kept. Parz
+  builds the title itself like Minecraft does and puts it on the window several times per second, so it also wins
+  against a client that renames the window behind Minecraft's back or replaces Minecraft's own title code.
 - **Remove Damage Shake** removes the screen shaking (the camera tilt) when you take damage. The red flash stays.
 - **Remove Blindness** hides the black fog of the blindness effect. The effect itself stays, so you still can not
   sprint.

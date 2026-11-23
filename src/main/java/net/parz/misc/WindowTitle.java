@@ -1,8 +1,13 @@
 package net.parz.misc;
 
-import com.mojang.blaze3d.platform.Window;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.client.server.IntegratedServer;
+import net.parz.ParzClient;
 import net.parz.config.ParzConfigDefinition;
+
 import java.lang.reflect.Method;
 
 /**
@@ -11,16 +16,17 @@ import java.lang.reflect.Method;
  * and the title of a modded game ("Minecraft* 26.2 - Multiplayer ...", the star is what Minecraft adds when mods like
  * Fabric are installed). With both off nothing is touched.
  *
- * <p>Two ways to rename a window are covered: through Minecraft's own Window.setTitle (the mixin of this feature changes
- * the text) and by writing to the window directly (the tick below notices the wrong title and puts the right one back).
+ * <p>The title is built here, in the same way as Minecraft does it, and not taken from Minecraft's own method: a client
+ * can replace that method, and then the "right" title would be its title. It is put on the window several times per
+ * second, whoever changed it, and also whenever something sets a title through the Window of Minecraft.
  */
 public final class WindowTitle {
-	/** The title Minecraft made last (already without the star in vanilla mode). */
-	private static volatile String expected = null;
+	/** The title is put again every this many ticks (a tick is 1/20 s). */
+	private static final int PERIOD = 2;
 	private static int ticks = 0;
-	/** Reads the title of a window: GLFW in Minecraft 26.2, SDL in 26.3 (looked up by name, so one source builds for both). */
-	private static Method reader = null;
-	private static boolean readerChecked = false;
+	private static Method rawSetter = null;
+	private static boolean rawChecked = false;
+	private static String lastLogged = "";
 
 	private WindowTitle() {
 	}
@@ -33,67 +39,82 @@ public final class WindowTitle {
 		return vanilla() || ParzConfigDefinition.TITLE_FABRIC.isEnabled();
 	}
 
-	/** Called with the title Minecraft just made; returns the title that is really used and remembers it. */
-	public static String adjustMade(String title) {
-		if (!active() || title == null) {
-			return title;
+	/** The title of the game as vanilla Minecraft makes it: "Minecraft", a star for a modded game, the version and where you are. */
+	public static String build(Minecraft client) {
+		StringBuilder title = new StringBuilder("Minecraft");
+		if (!vanilla()) {
+			title.append('*');
 		}
-		String result = vanilla() && title.startsWith("Minecraft*") ? "Minecraft" + title.substring("Minecraft*".length()) : title;
-		expected = result;
-		return result;
+		title.append(' ').append(SharedConstants.getCurrentVersion().name());
+		if (client.getConnection() != null && client.getConnection().getConnection().isConnected()) {
+			title.append(" - ");
+			IntegratedServer local = client.getSingleplayerServer();
+			ServerData server = client.getCurrentServer();
+			if (local != null && !local.isPublished()) {
+				title.append(I18n.get("title.singleplayer"));
+			} else if (server != null && server.isRealm()) {
+				title.append(I18n.get("title.multiplayer.realms"));
+			} else if (local != null || (server != null && server.isLan())) {
+				title.append(I18n.get("title.multiplayer.lan"));
+			} else {
+				title.append(I18n.get("title.multiplayer.other"));
+			}
+		}
+		return title.toString();
 	}
 
-	/** Called for every title that is about to be set on the window: another mod's title is replaced. */
-	public static String adjustSet(String title) {
-		String right = expected;
-		if (!active() || right == null || right.equals(title)) {
+	/** The title Minecraft is about to use (or any other mod sets): replaced by the right one while a setting is on. */
+	public static String adjust(String title) {
+		if (!active()) {
 			return title;
 		}
-		return right;
+		Minecraft client = Minecraft.getInstance();
+		return client == null ? title : build(client);
 	}
 
-	/** Every few ticks: the title of the window must be the right one, whoever set it. */
+	/** Several times per second the right title is put on the window again, whoever changed it. */
 	public static void tick(Minecraft client) {
 		if (!active()) {
-			expected = null;
 			return;
 		}
-		if (++ticks % 5 != 0) {
+		if (++ticks % PERIOD != 0) {
 			return;
 		}
-		Window window = client.getWindow();
-		if (window == null) {
+		if (client.getWindow() == null) {
 			return;
 		}
-		String current = currentTitle(window.handle());
-		// if the title can not be read, it is simply put again (a few times per second, cheap)
-		if (expected == null || current == null || !expected.equals(current)) {
-			client.updateTitle();
+		String title = build(client);
+		client.getWindow().setTitle(title);
+		setRaw(client.getWindow().handle(), title);
+		if (ticks % 200 == 0 && !title.equals(lastLogged)) {
+			lastLogged = title;
+			ParzClient.LOGGER.info("[window title] forcing \"{}\"", title);
 		}
 	}
 
-	private static String currentTitle(long handle) {
-		if (!readerChecked) {
-			readerChecked = true;
-			String[][] candidates = {{"org.lwjgl.glfw.GLFW", "glfwGetWindowTitle"}, {"org.lwjgl.sdl.SDLVideo", "SDL_GetWindowTitle"}};
+	/**
+	 * The same, straight on the window library (GLFW in Minecraft 26.2, SDL in 26.3; looked up by name, so one source builds
+	 * for both): a client that replaces the setTitle method of the Minecraft Window would otherwise win.
+	 */
+	private static void setRaw(long handle, String title) {
+		if (!rawChecked) {
+			rawChecked = true;
+			String[][] candidates = {{"org.lwjgl.glfw.GLFW", "glfwSetWindowTitle"}, {"org.lwjgl.sdl.SDLVideo", "SDL_SetWindowTitle"}};
 			for (String[] candidate : candidates) {
 				try {
-					reader = Class.forName(candidate[0]).getMethod(candidate[1], long.class);
+					rawSetter = Class.forName(candidate[0]).getMethod(candidate[1], long.class, CharSequence.class);
 					break;
 				} catch (ReflectiveOperationException | LinkageError ignored) {
 					// not this library
 				}
 			}
 		}
-		if (reader == null) {
-			return null;
-		}
-		try {
-			Object title = reader.invoke(null, handle);
-			return title == null ? null : title.toString();
-		} catch (ReflectiveOperationException | RuntimeException e) {
-			reader = null;
-			return null;
+		if (rawSetter != null) {
+			try {
+				rawSetter.invoke(null, handle, title);
+			} catch (ReflectiveOperationException | RuntimeException e) {
+				rawSetter = null;
+			}
 		}
 	}
 }

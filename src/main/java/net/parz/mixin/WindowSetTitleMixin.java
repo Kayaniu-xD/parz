@@ -12,7 +12,7 @@ public abstract class WindowSetTitleMixin {
 	@ModifyVariable(method = "setTitle", at = @At("HEAD"), argsOnly = true)
 	private String parz$title(String title) {
 		try {
-			return WindowTitle.adjustSet(title);
+			return WindowTitle.adjust(title);
 		} catch (RuntimeException e) {
 			return title;
 		}

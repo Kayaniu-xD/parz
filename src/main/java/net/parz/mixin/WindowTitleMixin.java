@@ -13,7 +13,7 @@ public abstract class WindowTitleMixin {
 	@Inject(method = "createTitle", at = @At("RETURN"), cancellable = true)
 	private void parz$title(CallbackInfoReturnable<String> cir) {
 		try {
-			cir.setReturnValue(WindowTitle.adjustMade(cir.getReturnValue()));
+			cir.setReturnValue(WindowTitle.adjust(cir.getReturnValue()));
 		} catch (RuntimeException ignored) {
 			// the title stays as it is
 		}

@@ -54,8 +54,8 @@ public final class ParzConfigDefinition {
 	public static final Toggle TITLE_FABRIC = GENERAL.toggle(
 			"general.title_fabric",
 			"Fabric Window Title",
-			"Forces the title of the game window to the one of a modded game (\"Minecraft* 26.2\", the star marks mods like Fabric), also when another mod or client renames the window. Only one of the two window title settings can be on.",
-			false);
+			"Forces the title of the game window to the one of a modded game (\"Minecraft* 26.2\", the star marks mods like Fabric), also when another mod or client renames the window. On by default. Only one of the two window title settings can be on.",
+			true);
 
 	static {
 		TITLE_VANILLA.exclusiveWith = TITLE_FABRIC;
