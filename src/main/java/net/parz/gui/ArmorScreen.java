@@ -19,6 +19,7 @@ import net.parz.armor.AnimatedDyes;
 import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.HeadCatalog;
+import net.parz.armor.StaticDyes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,11 +65,6 @@ public class ArmorScreen extends Screen {
 			return head == null && rgb == null;
 		}
 	}
-
-	private record NamedColor(String name, int rgb) {
-	}
-
-	private static final List<NamedColor> PALETTE = buildPalette();
 
 	private static final Map<String, ItemStack> HEAD_ICONS = new HashMap<>();
 	private static final Map<Long, ItemStack> ARMOR_ICONS = new HashMap<>();
@@ -180,9 +176,9 @@ public class ArmorScreen extends Screen {
 					list.add(new Entry(null, dye.code(), dye.name()));
 				}
 			}
-			for (NamedColor color : PALETTE) {
-				if (query.isEmpty() || color.name().toLowerCase(Locale.ROOT).contains(query) || hex(color.rgb()).contains(query.replace("#", ""))) {
-					list.add(new Entry(null, color.rgb(), color.name()));
+			for (StaticDyes.Dye dye : StaticDyes.all()) {
+				if (query.isEmpty() || dye.name().toLowerCase(Locale.ROOT).contains(query)) {
+					list.add(new Entry(null, dye.rgb(), dye.name()));
 				}
 			}
 		}
@@ -253,7 +249,7 @@ public class ArmorScreen extends Screen {
 		if (!status.isEmpty()) {
 			graphics.text(font, status, leftX(), py + PANEL_H - 16, 0xFF7CE08F, false);
 		} else {
-			graphics.text(font, "A color or animated dye draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
+			graphics.text(font, "A dye draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
 		}
 	}
 
@@ -328,7 +324,7 @@ public class ArmorScreen extends Screen {
 			}
 		}
 		if (entries.size() == 1 && !headSlot()) {
-			graphics.text(font, "No color matches. Type a color like #FF8800.", gx + 6, gy + 28, TEXT_DIM, false);
+			graphics.text(font, "No dye matches. You can also type a color like #FF8800.", gx + 6, gy + 28, TEXT_DIM, false);
 		} else if (entries.size() == 1 && HeadCatalog.status().isEmpty()) {
 			graphics.text(font, "No head matches your search.", gx + 6, gy + 28, TEXT_DIM, false);
 		}
@@ -491,7 +487,11 @@ public class ArmorScreen extends Screen {
 	/** "#RRGGBB", or the name of an animated dye. */
 	private static String colorName(int color) {
 		AnimatedDyes.Dye dye = AnimatedDyes.dyeOf(color);
-		return dye != null ? dye.name() : "#" + hex(color);
+		if (dye != null) {
+			return dye.name();
+		}
+		String name = StaticDyes.nameOf(color);
+		return name != null ? name : "#" + hex(color);
 	}
 
 	private static String hex(int rgb) {
@@ -512,56 +512,5 @@ public class ArmorScreen extends Screen {
 		} catch (NumberFormatException e) {
 			throw new IllegalArgumentException("A color must look like #RRGGBB");
 		}
-	}
-
-	/** A color from hue, saturation and brightness (all 0..1) as 0xRRGGBB. */
-	private static int hsv(float hue, float saturation, float value) {
-		float h = (hue - (float) Math.floor(hue)) * 6f;
-		int sector = (int) h;
-		float f = h - sector;
-		float p = value * (1f - saturation);
-		float q = value * (1f - saturation * f);
-		float t = value * (1f - saturation * (1f - f));
-		float r;
-		float g;
-		float b;
-		switch (sector) {
-			case 0 -> { r = value; g = t; b = p; }
-			case 1 -> { r = q; g = value; b = p; }
-			case 2 -> { r = p; g = value; b = t; }
-			case 3 -> { r = p; g = q; b = value; }
-			case 4 -> { r = t; g = p; b = value; }
-			default -> { r = value; g = p; b = q; }
-		}
-		return Math.round(r * 255) << 16 | Math.round(g * 255) << 8 | Math.round(b * 255);
-	}
-
-	/** The 16 Minecraft dye colors, then the color wheel in four shades, then grays. */
-	private static List<NamedColor> buildPalette() {
-		List<NamedColor> list = new ArrayList<>();
-		Object[][] dyes = {
-				{"White", 0xF9FFFE}, {"Light Gray", 0x9D9D97}, {"Gray", 0x474F52}, {"Black", 0x1D1D21},
-				{"Brown", 0x835432}, {"Red", 0xB02E26}, {"Orange", 0xF9801D}, {"Yellow", 0xFED83D},
-				{"Lime", 0x80C71F}, {"Green", 0x5E7C16}, {"Cyan", 0x169C9C}, {"Light Blue", 0x3AB3DA},
-				{"Blue", 0x3C44AA}, {"Purple", 0x8932B8}, {"Magenta", 0xC74EBD}, {"Pink", 0xF38BAA}
-		};
-		for (Object[] dye : dyes) {
-			list.add(new NamedColor((String) dye[0], (Integer) dye[1]));
-		}
-		float[] sat = {1f, 0.5f, 1f, 1f};
-		float[] val = {1f, 1f, 0.65f, 0.35f};
-		String[] shadeNames = {"Bright", "Light", "Dark", "Deep"};
-		String[] hueNames = {"red", "orange", "yellow", "lime", "green", "mint", "cyan", "azure", "blue", "violet", "magenta", "rose"};
-		for (int shade = 0; shade < 4; shade++) {
-			for (int hue = 0; hue < 12; hue++) {
-				int rgb = hsv(hue / 12f, sat[shade], val[shade]);
-				list.add(new NamedColor(shadeNames[shade] + " " + hueNames[hue], rgb));
-			}
-		}
-		for (int i = 0; i < 12; i++) {
-			int gray = Math.round(255f * (11 - i) / 11f);
-			list.add(new NamedColor("Gray " + (i + 1), gray << 16 | gray << 8 | gray));
-		}
-		return list;
 	}
 }
