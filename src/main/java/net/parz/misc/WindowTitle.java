@@ -3,7 +3,7 @@ package net.parz.misc;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.Minecraft;
 import net.parz.config.ParzConfigDefinition;
-import org.lwjgl.glfw.GLFW;
+import java.lang.reflect.Method;
 
 /**
  * Keeps the title of the game window the way Minecraft itself makes it, also when another mod or client renames the
@@ -18,6 +18,9 @@ public final class WindowTitle {
 	/** The title Minecraft made last (already without the star in vanilla mode). */
 	private static volatile String expected = null;
 	private static int ticks = 0;
+	/** Reads the title of a window: GLFW in Minecraft 26.2, SDL in 26.3 (looked up by name, so one source builds for both). */
+	private static Method reader = null;
+	private static boolean readerChecked = false;
 
 	private WindowTitle() {
 	}
@@ -62,9 +65,35 @@ public final class WindowTitle {
 		if (window == null) {
 			return;
 		}
-		String current = GLFW.glfwGetWindowTitle(window.handle());
-		if (expected == null || !expected.equals(current)) {
+		String current = currentTitle(window.handle());
+		// if the title can not be read, it is simply put again (a few times per second, cheap)
+		if (expected == null || current == null || !expected.equals(current)) {
 			client.updateTitle();
+		}
+	}
+
+	private static String currentTitle(long handle) {
+		if (!readerChecked) {
+			readerChecked = true;
+			String[][] candidates = {{"org.lwjgl.glfw.GLFW", "glfwGetWindowTitle"}, {"org.lwjgl.sdl.SDLVideo", "SDL_GetWindowTitle"}};
+			for (String[] candidate : candidates) {
+				try {
+					reader = Class.forName(candidate[0]).getMethod(candidate[1], long.class);
+					break;
+				} catch (ReflectiveOperationException | LinkageError ignored) {
+					// not this library
+				}
+			}
+		}
+		if (reader == null) {
+			return null;
+		}
+		try {
+			Object title = reader.invoke(null, handle);
+			return title == null ? null : title.toString();
+		} catch (ReflectiveOperationException | RuntimeException e) {
+			reader = null;
+			return null;
 		}
 	}
 }
