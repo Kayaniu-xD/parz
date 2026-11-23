@@ -65,6 +65,17 @@ public final class PlayerBadge {
 		return replaceNames(original, 8, false);
 	}
 
+	/**
+	 * The name tag of a slayer boss: "Spawned by: Name" is written over the boss for the player who spawned it. Only that
+	 * line is changed (other custom names are left alone, and nothing is done for texts without "Spawned by").
+	 */
+	public static Component applyInSlayerTag(Component original) {
+		if (original == null || !original.getString().contains("Spawned by")) {
+			return original;
+		}
+		return replaceNames(original, 1, false);
+	}
+
 	private record Match(int start, int end, String name) {
 	}
 

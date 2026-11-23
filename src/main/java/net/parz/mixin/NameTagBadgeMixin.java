@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** The [H] badge above the head of a player. */
+/** The [H] badge above the head of a player, and the name in "Spawned by: Name" above a slayer boss. */
 @Mixin(EntityRenderer.class)
 public abstract class NameTagBadgeMixin {
 	@Inject(method = "getNameTag", at = @At("RETURN"), cancellable = true)
@@ -18,6 +18,8 @@ public abstract class NameTagBadgeMixin {
 		try {
 			if (entity instanceof Player player) {
 				cir.setReturnValue(PlayerBadge.apply(player.getGameProfile().name(), cir.getReturnValue()));
+			} else if (entity.hasCustomName()) {
+				cir.setReturnValue(PlayerBadge.applyInSlayerTag(cir.getReturnValue()));
 			}
 		} catch (RuntimeException ignored) {
 			// the name stays as it is
