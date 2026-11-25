@@ -73,7 +73,8 @@ public final class DragonMarkers {
 
 	private static String lastState = "not checked yet";
 	private static boolean latched = false;
-	private static long outOfDungeonSince = 0;
+	/** True once the sidebar said Master Mode 7 in this world (in the dragon phase it does not say it any more). */
+	private static boolean masterSeven = false;
 	private static net.minecraft.client.multiplayer.ClientLevel lastLevel = null;
 
 	// the camera of the frame that is drawn
@@ -126,7 +127,7 @@ public final class DragonMarkers {
 	/** Ends the circles and says why in the chat, so a wrong end can be found. */
 	private static void drop(Minecraft client, String reason) {
 		latched = false;
-		outOfDungeonSince = 0;
+		masterSeven = false;
 		setState("off (" + reason + ")");
 		if (client.player != null) {
 			client.player.sendSystemMessage(net.minecraft.network.chat.Component.literal("[Parz] Dragon circles off: " + reason));
@@ -139,33 +140,34 @@ public final class DragonMarkers {
 				&& client.player.getY() <= PHASE_5_MAX_Y;
 	}
 
-	private static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		Minecraft client = Minecraft.getInstance();
+	/**
+	 * Decides whether the circles are on: from the dragon phase of M7 until you leave that place. The sidebar changes
+	 * during the dragon phase ("Catacombs" disappears when the Wither King fight starts), so it is only used to learn
+	 * that this world is an M7 run, never to end the circles.
+	 */
+	private static void trackPhase(Minecraft client) {
+		if (client.level != lastLevel) {
+			// a new world: you are somewhere else (leaving a dungeon always changes the world on Hypixel)
+			lastLevel = client.level;
+			resetStates();
+			DungeonInfo.reset(); // what is still stored belongs to the old world
+			latched = false;
+			masterSeven = false;
+		}
+		if (client.level == null || client.player == null) {
+			return;
+		}
+		if (SkyBlockDetector.featuresActive() && DungeonInfo.inCatacombs() && DungeonInfo.floor().equals("M7")) {
+			masterSeven = true;
+		}
 		if (!ParzConfigDefinition.DRAGON_CIRCLES.isEnabled()) {
 			setState("off (setting)");
 			return;
 		}
-		if (client.level == null || client.player == null) {
-			latched = false;
-			return;
-		}
-		if (client.level != lastLevel) {
-			// a new world object: only a different place ends the circles, not a reload inside the boss fight
-			lastLevel = client.level;
-				resetStates();
-			if (latched && !DungeonInfo.inCatacombs()) {
-				drop(client, "the world changed and you are not in a dungeon");
-			}
-		}
-		// Once the dragon phase of M7 has been recognised the circles stay. The sidebar and your height change
-		// during the fight (and when the Wither King spawns), so they are only looked at to start.
 		if (!latched) {
-			if (!SkyBlockDetector.featuresActive() || !DungeonInfo.inCatacombs()) {
-				setState("off (not in a dungeon)");
-				return;
-			}
-			if (!DungeonInfo.floor().equals("M7")) {
-				setState("off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")");
+			if (!masterSeven) {
+				setState(!DungeonInfo.inCatacombs() ? "off (not in a dungeon)"
+						: "off (only Master Mode 7, this is " + (DungeonInfo.floor().isEmpty() ? "an unknown floor" : DungeonInfo.floor()) + ")");
 				return;
 			}
 			if (!inDragonPhase(client)) {
@@ -174,19 +176,16 @@ public final class DragonMarkers {
 			}
 			latched = true;
 			net.parz.Debug.log("dragons", () -> "dragon phase of M7 recognised, the circles stay on");
-			outOfDungeonSince = 0;
-		}
-		// they only end when you really are somewhere else: out of the dungeon for 30 seconds, or back in the rooms
-		if (DungeonInfo.inCatacombs()) {
-			outOfDungeonSince = 0;
-		} else if (outOfDungeonSince == 0) {
-			outOfDungeonSince = System.currentTimeMillis();
-		} else if (System.currentTimeMillis() - outOfDungeonSince > 30_000) {
-			drop(client, "you have not been in a dungeon for 30 seconds");
-			return;
+			setState("waiting for a dragon to spawn");
 		}
 		if (client.player.getX() < -5 && client.player.getZ() < -5) {
 			drop(client, "you are back in the dungeon rooms");
+		}
+	}
+
+	private static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+		Minecraft client = Minecraft.getInstance();
+		if (!ParzConfigDefinition.DRAGON_CIRCLES.isEnabled() || !latched || client.level != lastLevel || client.player == null) {
 			return;
 		}
 
@@ -355,6 +354,7 @@ public final class DragonMarkers {
 
 	/** Counts the spawn timer down (once per tick, like the server); a dragon that never appears is dropped. */
 	private static void tick(Minecraft client) {
+		trackPhase(client);
 		for (Dragon dragon : DRAGONS) {
 			if (dragon.state == State.SPAWNING) {
 				dragon.timeToSpawn--;

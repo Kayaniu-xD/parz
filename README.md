@@ -106,6 +106,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 - **M7 Dragon Arrow Stack**: in the dragon phase of the Master Mode 7 boss fight, a cyan ring appears while a dragon
   is spawning. It shows where to aim your bow so that the arrow lands on the stack position of that dragon, with the
   drop of the arrow included. The ring always faces you, is visible through walls and gets bigger with the distance.
+  Once started it stays on for the whole dragon phase, until you leave the dungeon (the sidebar stops showing the
+  dungeon during the Wither King fight; that does not switch it off).
   The positions and the calculation are the ones of the Wither Dragons feature of
   [NoammAddons](https://github.com/Noamm9/NoammAddons).
 
