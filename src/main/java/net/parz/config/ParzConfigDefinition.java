@@ -62,6 +62,12 @@ public final class ParzConfigDefinition {
 		TITLE_FABRIC.exclusiveWith = TITLE_VANILLA;
 	}
 
+	public static final Toggle CUSTOM_NAMES = GENERAL.toggle(
+			"general.custom_names",
+			"Custom Names",
+			"Shows the custom names of Parz users (like [ዞ] Name), yours and those of others: in the tab list, scoreboard, chat, above heads and over slayer bosses. Off: every name looks normal on your screen.",
+			true);
+
 	// ---- Dashboard & HUD ---------------------------------------------------------
 	public static final Category DASHBOARD = category("Dashboard", "SkyBlock dashboard (/pz dash) and HUD trackers (/pz hud).");
 

@@ -109,9 +109,9 @@ public final class ModUsers {
 	private static final String[] ALWAYS = {"pay2loze"};
 	private static volatile int version = 0;
 
-	/** Changes every time the list of users changes (so cached names are made again). */
+	/** Changes every time the list of users changes or custom names are switched on or off (so cached names are made again). */
 	public static int version() {
-		return version;
+		return version * 2 + (PlayerBadge.enabled() ? 1 : 0);
 	}
 
 	/** True for you and for every player that reported to the registry. */

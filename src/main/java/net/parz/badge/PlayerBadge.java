@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.parz.Debug;
+import net.parz.config.ParzConfigDefinition;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -13,14 +14,19 @@ import java.util.Optional;
 
 /**
  * The name of every Parz user as that player chose it (default "[ዞ] Name"), in the tab list, the scoreboard, the
- * chat and above the head. It is always on (there is no setting) and only changes how the name is drawn on
- * your own screen.
+ * chat and above the head. It only changes how the name is drawn on your own screen and can be switched off
+ * completely (setting "Custom Names" in General): then no name is changed, neither yours nor those of others.
  */
 public final class PlayerBadge {
 	/** The symbol of the default look (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
 
 	private PlayerBadge() {
+	}
+
+	/** False while the setting "Custom Names" is off. */
+	public static boolean enabled() {
+		return ParzConfigDefinition.CUSTOM_NAMES.isEnabled();
 	}
 
 	/** The name in the format its player chose (default: "[ዞ] Name"). */
@@ -35,7 +41,7 @@ public final class PlayerBadge {
 
 	/** legacyColors: only the 16 Minecraft colors (for the tab list, see BadgeFormat.render). */
 	public static Component apply(String playerName, Component original, boolean legacyColors) {
-		if (original == null || playerName == null || !ModUsers.isUser(playerName)) {
+		if (original == null || playerName == null || !enabled() || !ModUsers.isUser(playerName)) {
 			return original;
 		}
 		if (original.getString().contains(SYMBOL)) {
@@ -89,7 +95,7 @@ public final class PlayerBadge {
 			return null;
 		}
 		String text = original.getString();
-		if (text.isEmpty() || text.contains(SYMBOL)) {
+		if (!enabled() || text.isEmpty() || text.contains(SYMBOL)) {
 			return original;
 		}
 		String lower = text.toLowerCase(Locale.ROOT);
