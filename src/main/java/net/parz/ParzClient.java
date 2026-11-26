@@ -54,7 +54,7 @@ public class ParzClient implements ClientModInitializer {
 		net.parz.fishing.TrophyFrogs.register();
 		net.parz.badge.BadgeConfig.load();
 		net.parz.badge.BadgePresets.load();
-		net.parz.armor.ArmorConfig.load();
+		net.parz.armor.ArmorConfig.register();
 		net.parz.item.ItemLooks.load();
 		net.parz.badge.ModUsers.register();
 		DashboardTracker.register();
@@ -132,8 +132,8 @@ public class ParzClient implements ClientModInitializer {
 								return 1;
 							})
 							.then(ClientCommands.literal("reset").executes(context -> {
-								net.parz.armor.ArmorConfig.set(net.parz.armor.ArmorLook.NONE);
-								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Your armor is back to normal.")
+								net.parz.armor.ArmorConfig.resetAll();
+								context.getSource().sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] All your armor pieces look normal again.")
 										.withStyle(net.minecraft.ChatFormatting.GREEN));
 								return 1;
 							}))
@@ -183,7 +183,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
 			{"pz customname", "Choose how your name looks to other Parz users (menu, or /pz customname json <json>)"},
-			{"pz custom", "Menu for your armor (head and colors other Parz users see; /pz custom #RRGGBB, reset to clear) and your items (name, model, glint; only you see these)"},
+			{"pz custom", "Menu for single armor pieces (head and colors other Parz users see; /pz custom #RRGGBB for the worn ones, reset clears all) and your items (name, model, glint; only you see these)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
@@ -223,7 +223,7 @@ public class ParzClient implements ClientModInitializer {
 		return 1;
 	}
 
-	/** /pz custom <#RRGGBB>: one color for your chestplate, leggings and boots, seen by other Parz users. */
+	/** /pz custom <#RRGGBB>: one color for the chestplate, leggings and boots you wear, seen by other Parz users. */
 	private static int armorColor(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String text) {
 		int rgb;
 		try {
@@ -233,8 +233,14 @@ public class ParzClient implements ClientModInitializer {
 					.withStyle(net.minecraft.ChatFormatting.RED));
 			return 0;
 		}
-		net.parz.armor.ArmorConfig.set(net.parz.armor.ArmorConfig.look().withAllColors(rgb));
-		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your chestplate, leggings and boots. Use /pz custom for the menu.")
+		java.util.List<String> pieces = net.parz.armor.ArmorConfig.chooseWornColors(rgb);
+		if (pieces.isEmpty()) {
+			source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Put on the chestplate, leggings or boots you want to color first.")
+					.withStyle(net.minecraft.ChatFormatting.RED));
+			return 0;
+		}
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved this color for " + String.join(", ", pieces)
+						+ ". Other Parz users see it too. Use /pz custom for the menu.")
 				.withStyle(net.minecraft.ChatFormatting.GREEN));
 		return 1;
 	}

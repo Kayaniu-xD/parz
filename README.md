@@ -43,7 +43,7 @@ Parz updates itself from the GitHub releases.
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
 | `/pz customname` | Menu to choose how your name looks to other Parz users (also `/pz customname json <text component>` and `/pz customname reset`) |
-| `/pz custom` | Menu with two tabs: **Armor** (head and armor colors for other Parz users; also `/pz custom #RRGGBB` and `/pz custom reset` for the armor) and **Item** (name, model and glint of your items) |
+| `/pz custom` | Menu with two tabs: **Armor** (head and colors per armor piece, seen by other Parz users; also `/pz custom #RRGGBB` for the pieces you wear and `/pz custom reset` for all pieces) and **Item** (name, model and glint of your items) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -149,14 +149,16 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
   the list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
   minutes after the last report. If the registry is not reachable, only your own account (and `Pay2Loze`) get the badge.
-- **Custom armor** (`/pz custom`, tab **Armor**): a menu with a preview of your player. Pick a slot under the preview and click
+- **Custom armor** (`/pz custom`, tab **Armor**): every choice belongs to **one armor piece**, the one you wear in that
+  slot (recognised by the own ID of the SkyBlock item). It shows while you wear that piece; other armor looks normal,
+  so every set can have its own colors. The menu has a preview of your player. Pick a slot under the preview and click
   what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) is shown
   instead of your helmet; the list comes from the public Hypixel items API, is saved in `config/parz-heads.json` and
   can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
   the search box (the piece is drawn as leather armor in that color, whatever armor you really wear, SkyBlock armor included).
   The menu lists the dyes of SkyBlock under their real names (Carmine Dye, Necron Dye, Pure White Dye, ...; 42 normal dyes, list of
   the SkyBlock wiki), drawn as the dye items of the game (heads with the texture of the dye). The first entries are the **animated dyes** (Aurora, Rose, Portal, Lucky, ... 27 of them): the piece changes its
-  color the way the dye does, for everybody with Parz (the colors are the frames of the public SkyBlock item repository, 20 per second). "Same color on all pieces" copies the
+  color the way the dye does, for everybody with Parz (the colors are the frames of the public SkyBlock item repository, 20 per second). "Same color on worn pieces" copies the
   color of the selected slot to the other two. Your choice is saved at once in `config/parz-armor.json` and sent to
   the registry, so every Parz user sees it within a minute or two, and it is still there the next time you start the
   game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot

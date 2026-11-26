@@ -31,8 +31,9 @@ import java.util.Map;
 /**
  * The "Armor" tab of /pz custom - how your armor looks to the other Parz users. Pick a slot below the preview (helmet,
  * chestplate, leggings, boots) and click what you want in the grid: for the helmet any SkyBlock head (armor heads,
- * minions, ...), for the other slots a color (the piece is then drawn as leather armor in that color). A click is saved
- * at once and sent to the registry, so everybody sees it; the preview shows it right away.
+ * minions, ...), for the other slots a color (the piece is then drawn as leather armor in that color). A choice belongs
+ * to the piece you wear in that slot (see {@link ArmorConfig}). A click is saved at once and sent to the registry, so
+ * everybody sees it; the preview shows it right away.
  */
 public class ArmorScreen extends Screen {
 	private static final int PANEL_W = 398;
@@ -104,16 +105,20 @@ public class ArmorScreen extends Screen {
 		this.setInitialFocus(search);
 
 		int buttonsY = gridY() + ROWS * CELL + 4;
-		sameColorButton = Button.builder(Component.literal("Same color on all pieces"), b -> sameColor())
+		sameColorButton = Button.builder(Component.literal("Same color on worn pieces"), b -> sameColor())
 				.bounds(gridX(), buttonsY, 150, 20).build();
 		this.addRenderableWidget(sameColorButton);
-		resetButton = Button.builder(Component.literal("Reset everything"), b -> {
-			ArmorConfig.set(ArmorLook.NONE);
-			status = "Reset: your armor looks normal again.";
+		resetButton = Button.builder(Component.literal("Reset worn armor"), b -> {
+			ArmorConfig.resetWorn();
+			status = "Reset: the armor you wear looks normal again.";
 			rebuild();
 		}).bounds(gridX() + 156, buttonsY, 118, 20).build();
 		this.addRenderableWidget(resetButton);
 
+		int moved = ArmorConfig.moveEarlierLook().size();
+		if (moved > 0) {
+			status = "Your earlier look now belongs to " + moved + (moved == 1 ? " piece you wear." : " pieces you wear.");
+		}
 		rebuild();
 	}
 
@@ -201,22 +206,29 @@ public class ArmorScreen extends Screen {
 		return entry.none() ? current == null : entry.rgb() != null && entry.rgb().equals(current);
 	}
 
+	/** True if you wear something in the selected slot (only then there is a piece to change). */
+	private boolean wearing() {
+		return !ArmorConfig.worn(SLOTS[slot]).isEmpty();
+	}
+
 	private void choose(Entry entry) {
-		ArmorLook look = ArmorConfig.look();
-		if (headSlot()) {
-			ArmorConfig.set(look.withSkin(entry.head() == null ? null : entry.head().hash()));
-		} else {
-			ArmorConfig.set(look.withColor(SLOTS[slot], entry.rgb()));
+		String name = ArmorConfig.wornName(SLOTS[slot]);
+		if (ArmorConfig.choose(SLOTS[slot], entry.head() == null ? null : entry.head().hash(), entry.rgb())) {
+			status = fit((entry.none() ? "Normal again: " : "Saved " + entry.label() + " for ") + name);
 		}
-		status = entry.none() ? "Removed: " + SLOT_NAMES[slot] + " looks normal again."
-				: "Saved " + entry.label() + ". Other Parz users see it now.";
 	}
 
 	private void sameColor() {
-		Integer color = ArmorConfig.look().color(SLOTS[Math.max(1, slot)]);
-		ArmorConfig.set(ArmorConfig.look().withAllColors(color));
-		status = color == null ? "Colors removed from chestplate, leggings and boots."
-				: "Saved " + colorName(color) + " for chestplate, leggings and boots.";
+		Integer color = ArmorConfig.look().color(SLOTS[slot]);
+		int count = ArmorConfig.chooseWornColors(color).size();
+		status = color == null ? "Colors removed from " + count + " worn pieces."
+				: "Saved " + colorName(color) + " for " + count + " worn pieces.";
+	}
+
+	/** The text cut to the width of the panel. */
+	private String fit(String text) {
+		int width = PANEL_W - 2 * PAD;
+		return font.width(text) <= width ? text : font.plainSubstrByWidth(text, width - font.width("...")) + "...";
 	}
 
 	// ---- drawing -----------------------------------------------------------------------------
@@ -227,7 +239,7 @@ public class ArmorScreen extends Screen {
 			rebuild();
 		}
 		sameColorButton.visible = !headSlot();
-		sameColorButton.active = !headSlot();
+		sameColorButton.active = !headSlot() && wearing();
 
 		graphics.fill(px, py, px + PANEL_W, py + PANEL_H, PANEL);
 		graphics.outline(px, py, PANEL_W, PANEL_H, PANEL_EDGE);
@@ -246,7 +258,9 @@ public class ArmorScreen extends Screen {
 		if (!status.isEmpty()) {
 			graphics.text(font, status, leftX(), py + PANEL_H - 16, 0xFF7CE08F, false);
 		} else {
-			graphics.text(font, "A dye draws the piece as dyed leather armor; a head replaces the helmet.", leftX(), py + PANEL_H - 16, TEXT_DIM, false);
+			String name = ArmorConfig.wornName(SLOTS[slot]);
+			graphics.text(font, fit(name == null ? "A choice belongs to one armor piece." : "Only for this piece: " + name),
+					leftX(), py + PANEL_H - 16, TEXT_DIM, false);
 		}
 	}
 
@@ -259,14 +273,11 @@ public class ArmorScreen extends Screen {
 		if (client.player == null) {
 			return;
 		}
-		ArmorConfig.previewing = true;
 		try {
 			InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, x + 1, y + 1, x + PREVIEW_W - 1, y + PREVIEW_H - 1,
 					52, 0.0625F, mouseX, mouseY, client.player);
 		} catch (RuntimeException ignored) {
 			// no preview this frame
-		} finally {
-			ArmorConfig.previewing = false;
 		}
 	}
 
@@ -280,7 +291,9 @@ public class ArmorScreen extends Screen {
 			graphics.outline(x, y, SLOT, SLOT, i == slot ? 0xFFE8F0FF : BOX_EDGE);
 			graphics.item(slotIcon(i, look), x + 4, y + 4);
 			if (hover) {
-				graphics.setTooltipForNextFrame(font, Component.literal(SLOT_NAMES[i]), mouseX, mouseY);
+				String name = ArmorConfig.wornName(SLOTS[i]);
+				graphics.setTooltipForNextFrame(font, Component.literal(SLOT_NAMES[i] + ": " + (name == null ? "nothing worn" : name)),
+						mouseX, mouseY);
 			}
 		}
 	}
@@ -300,6 +313,11 @@ public class ArmorScreen extends Screen {
 		int h = ROWS * CELL;
 		graphics.fill(gx - 1, gy - 1, gx + w + 1, gy + h + 1, BOX_EDGE);
 		graphics.fill(gx, gy, gx + w, gy + h, 0xFF11141C);
+		if (!wearing()) {
+			graphics.centeredText(font, "You wear nothing in this slot.", gx + w / 2, gy + h / 2 - 12, TEXT);
+			graphics.centeredText(font, "Put on the piece you want to change.", gx + w / 2, gy + h / 2 + 2, TEXT_DIM);
+			return;
+		}
 
 		if (entries.size() <= 1 && headSlot() && !HeadCatalog.status().isEmpty()) {
 			graphics.text(font, HeadCatalog.status(), gx + 6, gy + 28, TEXT_DIM, false);
@@ -428,7 +446,7 @@ public class ArmorScreen extends Screen {
 			}
 			int gx = gridX();
 			int gy = gridY();
-			if (inside(mx, my, gx, gy, COLS * CELL, ROWS * CELL)) {
+			if (wearing() && inside(mx, my, gx, gy, COLS * CELL, ROWS * CELL)) {
 				int column = (int) ((mx - gx) / CELL);
 				int row = (int) ((my - gy) / CELL);
 				int index = (scroll + row) * COLS + column;

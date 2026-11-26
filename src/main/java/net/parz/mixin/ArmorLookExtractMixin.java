@@ -1,15 +1,11 @@
 package net.parz.mixin;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.SkullBlock;
-import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.ArmorLookHolder;
 import net.parz.badge.ModUsers;
@@ -35,21 +31,6 @@ public abstract class ArmorLookExtractMixin {
 			ArmorLook look = null;
 			if (entity instanceof Player player) {
 				look = ModUsers.armorLookOf(player.getGameProfile().name());
-				if (ArmorConfig.previewing && player == Minecraft.getInstance().player) {
-					// the preview in the armor menu: empty armor slots get leather armor, so every choice shows
-					if (state.headEquipment.isEmpty()) {
-						state.headEquipment = new ItemStack(Items.LEATHER_HELMET);
-					}
-					if (state.chestEquipment.isEmpty()) {
-						state.chestEquipment = new ItemStack(Items.LEATHER_CHESTPLATE);
-					}
-					if (state.legsEquipment.isEmpty()) {
-						state.legsEquipment = new ItemStack(Items.LEATHER_LEGGINGS);
-					}
-					if (state.feetEquipment.isEmpty()) {
-						state.feetEquipment = new ItemStack(Items.LEATHER_BOOTS);
-					}
-				}
 			}
 			((ArmorLookHolder) (Object) state).parz$setArmorLook(look);
 			// headEquipment only holds helmets with an armor model; a SkyBlock helmet that is a player head (or any block or
