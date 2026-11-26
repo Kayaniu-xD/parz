@@ -226,6 +226,8 @@ public final class ModUpdater {
 			Files.move(partFile, newFile, StandardCopyOption.REPLACE_EXISTING);
 
 			scheduleSwap(newFile, oldJar, finalJar);
+			// downloads of earlier versions that you did not restart for are not needed any more
+			deleteDownloadsExcept(modsDir, newFile);
 			setStatus(Status.READY);
 			tell(chat, "Parz " + release.version() + " is downloaded. It replaces the old mod when you close Minecraft - restart the game to use it.");
 		} catch (UpdateException e) {
@@ -438,10 +440,29 @@ public final class ModUpdater {
 				.start();
 	}
 
+	/** Deletes every downloaded Parz update (".new", also half downloaded ".part" files) except the one to install. */
+	private static void deleteDownloadsExcept(Path modsDir, Path keep) {
+		Pattern download = Pattern.compile("^parz-\\d+(?:\\.\\d+)*(?:-mc[\\d.]+)?\\.jar\\.(?:new|part)$");
+		try (var files = Files.list(modsDir)) {
+			for (Path file : files.toList()) {
+				if (!file.equals(keep) && download.matcher(file.getFileName().toString()).matches()) {
+					try {
+						Files.deleteIfExists(file);
+					} catch (Exception e) {
+						ParzClient.LOGGER.warn("Could not delete the old download {}", file.getFileName(), e);
+					}
+				}
+			}
+		} catch (Exception e) {
+			ParzClient.LOGGER.warn("Could not delete old Parz downloads", e);
+		}
+	}
+
 	/**
 	 * Called when the game starts: removes leftovers of earlier updates in the mods folder (half downloaded
-	 * ".part" files, ".new" files that are not newer than this version, older Parz jars). A newer ".new" file whose
-	 * swap did not happen is scheduled again, so it replaces the mod when you close the game.
+	 * ".part" files, ".new" files that are not newer than this version, older Parz jars). The newest ".new" file
+	 * whose swap did not happen is scheduled again, so it replaces the mod when you close the game; the others are
+	 * deleted.
 	 */
 	public static void cleanupLeftovers() {
 		try {
@@ -450,38 +471,45 @@ public final class ModUpdater {
 			if (running == null || !Files.isRegularFile(running) || !running.toString().endsWith(".jar")) {
 				return;
 			}
-			Path modsDir = running.getParent();
-			String current = currentVersion();
-			String minecraft = runningMinecraft();
-			Pattern name = Pattern.compile("^parz-(\\d+(?:\\.\\d+)*)(?:-mc([\\d.]+))?\\.jar(\\.new|\\.part)?$");
-			try (var files = Files.list(modsDir)) {
-				for (Path file : files.toList()) {
-					Matcher m = name.matcher(file.getFileName().toString());
-					if (!m.matches() || file.equals(running)) {
-						continue;
-					}
-					String version = m.group(1);
-					String fileMinecraft = m.group(2) != null ? m.group(2) : PLAIN_ASSET_MINECRAFT;
-					String suffix = m.group(3);
-					int newer = compareVersions(version, current);
-					if (".part".equals(suffix)) {
-						Files.deleteIfExists(file);
-					} else if (".new".equals(suffix)) {
-						if (newer > 0 && fileMinecraft.equals(minecraft) && isValidJar(file)) {
-							String jarName = file.getFileName().toString();
-							scheduleSwap(file, running, modsDir.resolve(jarName.substring(0, jarName.length() - ".new".length())));
-							ParzClient.LOGGER.info("Parz {} is waiting to be installed when the game closes", version);
-						} else {
-							Files.deleteIfExists(file);
-						}
-					} else if (newer < 0 && fileMinecraft.equals(minecraft)) {
-						Files.deleteIfExists(file); // an old Parz jar that was not removed
-					}
-				}
+			Path waiting = cleanup(running, currentVersion(), runningMinecraft());
+			if (waiting != null) {
+				String jarName = waiting.getFileName().toString();
+				scheduleSwap(waiting, running, waiting.resolveSibling(jarName.substring(0, jarName.length() - ".new".length())));
+				ParzClient.LOGGER.info("{} is waiting to be installed when the game closes", jarName);
 			}
 		} catch (Exception e) {
 			ParzClient.LOGGER.warn("Could not clean up old Parz files", e);
 		}
+	}
+
+	/** The cleaning of the mods folder; returns the download that is still to be installed, or null. */
+	private static Path cleanup(Path running, String current, String minecraft) throws Exception {
+		Path modsDir = running.getParent();
+		Pattern name = Pattern.compile("^parz-(\\d+(?:\\.\\d+)*)(?:-mc([\\d.]+))?\\.jar(\\.new|\\.part)?$");
+		Path newest = null;
+		String newestVersion = current;
+		try (var files = Files.list(modsDir)) {
+			for (Path file : files.toList()) {
+				Matcher m = name.matcher(file.getFileName().toString());
+				if (!m.matches() || file.equals(running)) {
+					continue;
+				}
+				String version = m.group(1);
+				String fileMinecraft = m.group(2) != null ? m.group(2) : PLAIN_ASSET_MINECRAFT;
+				String suffix = m.group(3);
+				if (".new".equals(suffix)) {
+					// newer than this version and than every other download seen so far
+					if (compareVersions(version, newestVersion) > 0 && fileMinecraft.equals(minecraft) && isValidJar(file)) {
+						newest = file;
+						newestVersion = version;
+					}
+				} else if (suffix == null && compareVersions(version, current) < 0 && fileMinecraft.equals(minecraft)) {
+					Files.deleteIfExists(file); // an old Parz jar that was not removed
+				}
+			}
+		}
+		deleteDownloadsExcept(modsDir, newest);
+		return newest;
 	}
 
 	private static boolean isValidJar(Path file) {

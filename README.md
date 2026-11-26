@@ -28,7 +28,8 @@ Parz updates itself from the GitHub releases.
 
 - When the game starts it checks for a newer version and, if there is one, shows a chat message you can click.
 - `/pz update` downloads the newest jar for your Minecraft version and swaps it with the old one in the `mods`
-  folder. Restart the game afterwards.
+  folder. Restart the game afterwards. If you update again before the restart, only the newest download is
+  kept.
 - Both the start-up check and the chat message can be turned off in the **Update** category of the menu.
 
 ## Commands
