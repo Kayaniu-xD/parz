@@ -423,22 +423,52 @@ public final class TrophyFrogs {
 	}
 
 	public static int height() {
-		return 4 + 12 + Frog.values().length * ROW + (synced ? 0 : ROW) + 2;
+		// one line stays for the "all complete" text
+		return heightOf(Math.max(1, listed().size()));
+	}
+
+	/** The height with every frog listed. */
+	public static int fullHeight() {
+		return heightOf(Frog.values().length);
+	}
+
+	private static int heightOf(int rows) {
+		return 4 + 12 + rows * ROW + (synced ? 0 : ROW) + 2;
+	}
+
+	/** True once you have all four trophies of this frog. */
+	public static boolean complete(Frog frog) {
+		for (int count : counts[frog.ordinal()]) {
+			if (count <= 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** The frogs in the list: all of them, or only those still missing a trophy (setting "Hide Completed Frogs"). */
+	private static List<Frog> listed() {
+		boolean hide = ParzConfigDefinition.TROPHY_FROGS_HIDE_COMPLETE.isEnabled();
+		return Arrays.stream(Frog.values()).filter(frog -> !hide || !complete(frog)).toList();
 	}
 
 	private static String syncHint() {
 		return "Talk to Researcher Ribery to sync";
 	}
 
-	/** The list with its top left corner at x, y, in normal size. */
+	/** The list with its top left corner at x, y, in normal size (without a background, the text has a shadow). */
 	public static void drawUnscaled(GuiGraphicsExtractor graphics, Font font, int x, int y) {
-		graphics.fill(x, y, x + width(), y + height(), 0x90101014);
 		graphics.text(font, Component.literal("Trophy Frog Display").withStyle(ChatFormatting.BOLD), x + 4, y + 4, 0xFFFFE040, true);
 		int iconX = x + 4 + nameWidth(font) + 5;
 		int countX = iconX + 13;
 		int marksX = countX + countWidth(font) + 5;
 		int rowY = y + 16;
-		for (Frog frog : Frog.values()) {
+		List<Frog> listed = listed();
+		if (listed.isEmpty()) {
+			graphics.text(font, "All trophy frogs complete!", x + 4, rowY + 1, 0xFF55FF55, true);
+			rowY += ROW;
+		}
+		for (Frog frog : listed) {
 			graphics.text(font, frog.title, x + 4, rowY + 1, frog.color, true);
 			graphics.pose().pushMatrix();
 			graphics.pose().translate(iconX, rowY);

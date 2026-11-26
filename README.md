@@ -128,7 +128,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 - **Trophy Froggs**: on the Lotus Atoll, while you hold a water fishing rod, a list of all twelve trophy frogs sorted by
   rarity, with how many you caught and a check mark or a red cross for bronze, silver, gold and diamond. Open the menu
   of **Researcher Ribery** once and Parz reads what you already have (until then unknown tiers show a ?). Every catch
-  after that is counted from the "TROPHY FROG!" chat message. Move and resize the list with `/pz hud`. The numbers are
+  after that is counted from the "TROPHY FROG!" chat message. The list has no background. With the setting **Hide
+  Completed Frogs** a frog disappears from it once you have all four of its trophies. Move and resize the list with `/pz hud`. The numbers are
   saved per Minecraft account in `config/parz-frogs.json`; after switching your SkyBlock profile, open Ribery's menu
   again.
 

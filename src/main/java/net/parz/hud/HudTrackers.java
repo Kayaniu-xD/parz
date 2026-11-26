@@ -105,7 +105,8 @@ public final class HudTrackers {
 			y = 4;
 		}
 		if (FROG_KEY.equals(key) && pos == null) {
-			y = (screenH - scaledHeight(key)) / 2; // the frog list starts at the left, in the middle
+			// the frog list starts at the left, in the middle; its top stays put when finished frogs are hidden
+			y = (screenH - Math.round(TrophyFrogs.fullHeight() * scale(key))) / 2;
 		}
 		x = Math.max(0, Math.min(screenW - scaledWidth(key), x));
 		y = Math.max(0, Math.min(screenH - scaledHeight(key), y));

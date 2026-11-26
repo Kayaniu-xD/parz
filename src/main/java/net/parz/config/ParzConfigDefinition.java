@@ -146,6 +146,12 @@ public final class ParzConfigDefinition {
 			"On the Lotus Atoll, while you hold a water fishing rod: a list of all trophy frogs with the tiers (bronze, silver, gold, diamond) you have and are missing. Open the menu of Researcher Ribery once to read your numbers; new catches are counted from the chat. Move it with /pz hud.",
 			true);
 
+	public static final Toggle TROPHY_FROGS_HIDE_COMPLETE = FISHING.toggle(
+			"fishing.trophy_frogs_hide_complete",
+			"Hide Completed Frogs",
+			"Trophy Froggs only lists the frogs you still need: a frog disappears once you have its bronze, silver, gold and diamond trophy.",
+			false);
+
 	// ---- Update --------------------------------------------------------------------
 	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
 
