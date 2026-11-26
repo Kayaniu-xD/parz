@@ -10,7 +10,7 @@
 		"HurtShakeMixin",
 		"TabBadgeMixin",
 		"NameTagBadgeMixin",
-		"TeamBadgeMixin",
+		"SidebarBadgeMixin",
 		"ChatBadgeMixin",
 		"ArmorLookStateMixin",
 		"ArmorLookExtractMixin",

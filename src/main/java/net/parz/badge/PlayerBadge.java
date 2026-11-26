@@ -16,16 +16,13 @@ import java.util.Optional;
  * The name of every Parz user as that player chose it (default "[ዞ] Name"), in the tab list, the scoreboard, the
  * chat and above the head. It only changes how the name is drawn on your own screen and can be switched off
  * completely (setting "Custom Names" in General): then no name is changed, neither yours nor those of others.
+ *
+ * <p>The tab list and the scoreboard of the game keep the real names; only what is drawn is changed. Other mods
+ * read those names to find players (dungeon maps, SkyHanni) and break if they see custom ones.
  */
 public final class PlayerBadge {
 	/** The symbol of the default look (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
-
-	/**
-	 * True while SkyHanni reads the tab list for its compact tab list. It then gets the real names: it only shows the
-	 * head of a player (and sorts the line) if it finds "[level] RealName" in it.
-	 */
-	public static final ThreadLocal<Boolean> SKYHANNI_READS = ThreadLocal.withInitial(() -> false);
 
 	private PlayerBadge() {
 	}
@@ -185,26 +182,26 @@ public final class PlayerBadge {
 	}
 
 	/** Names that were looked at: the result per text object (teams give the same object again and again). */
-	private static final java.util.Map<Component, Object[]> TEAM_CACHE = new java.util.IdentityHashMap<>();
+	private static final java.util.Map<Component, Object[]> LINE_CACHE = new java.util.IdentityHashMap<>();
 
 	/**
-	 * applyInText, remembered per text: for texts that are asked for in every frame (the prefix and suffix of
-	 * scoreboard teams, the lines of SkyHanni's tab list).
+	 * applyInText, remembered per text object: for the lines of SkyHanni's tab list, which are asked for in every
+	 * frame.
 	 */
 	public static synchronized Component applyInTextCached(Component original) {
 		if (original == null) {
 			return null;
 		}
 		int version = ModUsers.version();
-		Object[] cached = TEAM_CACHE.get(original);
+		Object[] cached = LINE_CACHE.get(original);
 		if (cached != null && (int) cached[0] == version) {
 			return (Component) cached[1];
 		}
-		if (TEAM_CACHE.size() > 600) {
-			TEAM_CACHE.clear();
+		if (LINE_CACHE.size() > 600) {
+			LINE_CACHE.clear();
 		}
 		Component result = applyInText(original);
-		TEAM_CACHE.put(original, new Object[]{version, result});
+		LINE_CACHE.put(original, new Object[]{version, result});
 		return result;
 	}
 

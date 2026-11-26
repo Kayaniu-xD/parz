@@ -129,6 +129,9 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   list, in the scoreboard (for example the party list in a dungeon), in the chat, above the head and in the "Spawned by: Name" line above a slayer boss, so you can see who else has
   the mod. The setting **Custom Names** (`/pz`, General; on by default) switches this off completely on your screen: no name
   is changed, neither yours nor those of others (chat lines that are already there keep their look; others still see your custom name).
+  In the tab list and the scoreboard only the drawing is changed: other mods (dungeon maps, for example) still read the
+  real names. This covers the tab list and sidebar of the game and the compact tab list of SkyHanni; a mod that draws
+  its own scoreboard or tab list from those names shows the real ones.
   With `/pz customname` everybody chooses their own look:
   one text (`{name}` = the real name) with one color for everything or a color for every single letter, or a Minecraft
   text component in JSON (the menu can write the JSON from your letters). The "Presets" button opens a list where you save a look under a name and load it again (saved in `config/parz-badge-presets.json`) (`{name}` stands for the
