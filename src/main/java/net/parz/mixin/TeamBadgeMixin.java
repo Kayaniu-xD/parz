@@ -18,7 +18,7 @@ public abstract class TeamBadgeMixin {
 	@Inject(method = "getPlayerPrefix", at = @At("RETURN"), cancellable = true)
 	private void parz$prefix(CallbackInfoReturnable<Component> cir) {
 		try {
-			cir.setReturnValue(PlayerBadge.applyToTeamText(cir.getReturnValue()));
+			cir.setReturnValue(PlayerBadge.applyInTextCached(cir.getReturnValue()));
 		} catch (RuntimeException ignored) {
 			// the text stays as it is
 		}
@@ -27,7 +27,7 @@ public abstract class TeamBadgeMixin {
 	@Inject(method = "getPlayerSuffix", at = @At("RETURN"), cancellable = true)
 	private void parz$suffix(CallbackInfoReturnable<Component> cir) {
 		try {
-			cir.setReturnValue(PlayerBadge.applyToTeamText(cir.getReturnValue()));
+			cir.setReturnValue(PlayerBadge.applyInTextCached(cir.getReturnValue()));
 		} catch (RuntimeException ignored) {
 			// the text stays as it is
 		}

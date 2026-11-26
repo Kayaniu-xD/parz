@@ -1,0 +1,13 @@
+{
+	"required": false,
+	"package": "net.parz.compat.skyhanni",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"SkyHanniTabDataMixin",
+		"SkyHanniTabRendererMixin",
+		"SkyHanniTabLineMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}

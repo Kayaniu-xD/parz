@@ -21,6 +21,12 @@ public final class PlayerBadge {
 	/** The symbol of the default look (it is drawn as the H badge). */
 	private static final String SYMBOL = "ዞ";
 
+	/**
+	 * True while SkyHanni reads the tab list for its compact tab list. It then gets the real names: it only shows the
+	 * head of a player (and sorts the line) if it finds "[level] RealName" in it.
+	 */
+	public static final ThreadLocal<Boolean> SKYHANNI_READS = ThreadLocal.withInitial(() -> false);
+
 	private PlayerBadge() {
 	}
 
@@ -181,8 +187,11 @@ public final class PlayerBadge {
 	/** Names that were looked at: the result per text object (teams give the same object again and again). */
 	private static final java.util.Map<Component, Object[]> TEAM_CACHE = new java.util.IdentityHashMap<>();
 
-	/** applyInText for the prefix and suffix of scoreboard teams, remembered per text (it is asked for in every frame). */
-	public static synchronized Component applyToTeamText(Component original) {
+	/**
+	 * applyInText, remembered per text: for texts that are asked for in every frame (the prefix and suffix of
+	 * scoreboard teams, the lines of SkyHanni's tab list).
+	 */
+	public static synchronized Component applyInTextCached(Component original) {
 		if (original == null) {
 			return null;
 		}
