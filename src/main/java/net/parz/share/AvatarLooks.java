@@ -78,7 +78,9 @@ public final class AvatarLooks {
 		if (stack == null || stack.isEmpty()) {
 			return null;
 		}
-		SharedLooks.Piece piece = pieceFor(ItemLooks.uuidOf(stack), false);
+		// what you wear is recognised even when it came without its ID
+		String worn = ArmorConfig.wornKeyOf(stack);
+		SharedLooks.Piece piece = pieceFor(worn != null ? worn : ItemLooks.uuidOf(stack), false);
 		if (piece == null) {
 			return null;
 		}

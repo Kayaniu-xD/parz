@@ -21,7 +21,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
  * armor is: Minecraft only dyes armor whose equipment model can be dyed, and armor from SkyBlock (or iron, diamond,
  * ...) uses its own model, so a dye on the item alone would change nothing.
  */
-@Mixin(HumanoidArmorLayer.class)
+// a late priority: if another mod also swaps the armor that is drawn, the color chosen in Parz comes last
+@Mixin(value = HumanoidArmorLayer.class, priority = 2000)
 public abstract class ArmorLookRenderMixin {
 
 	@ModifyVariable(method = "renderArmorPiece", at = @At("HEAD"), ordinal = 0, argsOnly = true)

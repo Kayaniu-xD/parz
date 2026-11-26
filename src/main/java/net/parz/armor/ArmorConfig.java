@@ -10,12 +10,13 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.parz.Debug;
+import net.parz.ParzClient;
 import net.parz.badge.ModUsers;
 import net.parz.mixin.CustomDataAccessor;
 import net.parz.share.LookSync;
@@ -25,9 +26,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * YOUR armor looks, chosen in /pz custom and saved in config/parz-armor.json. A choice belongs to ONE armor piece
@@ -46,6 +50,14 @@ public final class ArmorConfig {
 	private static final int SETTLE_TICKS = 40;
 	/** And it is sent at most this often. */
 	private static final long REPORT_EVERY_MS = 10_000;
+
+	/** A piece that was recognised by its data: the key of its choice, what kind of item it is and its SkyBlock name. */
+	private record Seen(String key, Item item, String id) {
+	}
+
+	/** The piece last recognised in each slot (see {@link #wornKey}). */
+	private static final Map<EquipmentSlot, Seen> seen = new EnumMap<>(EquipmentSlot.class);
+	private static final Set<EquipmentSlot> loggedWithoutId = EnumSet.noneOf(EquipmentSlot.class);
 
 	/** The choices, by the key of the piece (see {@link #keyOf}). */
 	private static volatile Map<String, Piece> pieces = Map.of();
@@ -76,19 +88,62 @@ public final class ArmorConfig {
 		if (stack.isEmpty()) {
 			return null;
 		}
-		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
-		if (data != null) {
-			CompoundTag tag = ((CustomDataAccessor) (Object) data).parz$tag();
-			String uuid = tag.getStringOr("uuid", "");
-			if (!uuid.isEmpty()) {
-				return uuid;
-			}
-			String id = tag.getStringOr("id", "");
-			if (!id.isEmpty()) {
-				return "id:" + id;
-			}
+		String uuid = dataOf(stack, "uuid");
+		if (!uuid.isEmpty()) {
+			return uuid;
+		}
+		String id = dataOf(stack, "id");
+		if (!id.isEmpty()) {
+			return "id:" + id;
 		}
 		return "item:" + BuiltInRegistries.ITEM.getKey(stack.getItem());
+	}
+
+	/**
+	 * The key of the piece you wear in this slot, or null if you wear nothing there. The game can get a worn piece
+	 * again without the data that tells which one it is (SkyBlock changes the color of animated dyes while you play);
+	 * as long as the same kind of item stays in the slot, it is still the piece that was recognised there before.
+	 */
+	public static synchronized String wornKey(EquipmentSlot slot) {
+		ItemStack stack = worn(slot);
+		if (stack.isEmpty()) {
+			seen.remove(slot);
+			return null;
+		}
+		String uuid = dataOf(stack, "uuid");
+		String id = dataOf(stack, "id");
+		Seen last = seen.get(slot);
+		if (uuid.isEmpty() && last != null && last.item() == stack.getItem() && (id.isEmpty() || id.equals(last.id()))) {
+			if (!last.key().equals(keyOf(stack)) && loggedWithoutId.add(slot)) {
+				// once per slot and game start, so the log tells whether this happens
+				ParzClient.LOGGER.info("Armor in slot {} came without its ID, keeping {}: {}", slot, last.key(),
+						stack.getComponentsPatch());
+			}
+			return last.key();
+		}
+		String key = keyOf(stack);
+		if (!uuid.isEmpty() || !id.isEmpty()) {
+			seen.put(slot, new Seen(key, stack.getItem(), id));
+		} else {
+			seen.remove(slot);
+		}
+		return key;
+	}
+
+	/** The key of this stack if it is one you wear right now, otherwise null. */
+	public static String wornKeyOf(ItemStack stack) {
+		for (EquipmentSlot slot : SLOTS) {
+			if (!stack.isEmpty() && worn(slot) == stack) {
+				return wornKey(slot);
+			}
+		}
+		return null;
+	}
+
+	/** A text from the data of the item, or "". */
+	private static String dataOf(ItemStack stack, String name) {
+		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+		return data == null ? "" : ((CustomDataAccessor) (Object) data).parz$tag().getStringOr(name, "");
 	}
 
 	/** The armor piece you wear in this slot (empty if none). */
@@ -114,7 +169,7 @@ public final class ArmorConfig {
 	}
 
 	private static Piece pieceIn(EquipmentSlot slot) {
-		String key = keyOf(worn(slot));
+		String key = wornKey(slot);
 		return key == null ? null : pieces.get(key);
 	}
 
@@ -135,7 +190,7 @@ public final class ArmorConfig {
 
 	/** Puts the choice for the piece in the slot into the map (a choice of nothing removes it); false without a piece. */
 	private static boolean put(Map<String, Piece> map, EquipmentSlot slot, String skin, Integer color) {
-		String key = keyOf(worn(slot));
+		String key = wornKey(slot);
 		if (key == null) {
 			return false;
 		}
@@ -143,7 +198,10 @@ public final class ArmorConfig {
 		if (head ? skin == null : color == null) {
 			map.remove(key);
 		} else {
-			map.put(key, new Piece(wornName(slot), head ? skin : null, head ? null : color));
+			// a piece that came without its ID may also have lost its name: keep the one saved before
+			Piece before = map.get(key);
+			String name = before != null && !key.equals(keyOf(worn(slot))) ? before.name() : wornName(slot);
+			map.put(key, new Piece(name, head ? skin : null, head ? null : color));
 		}
 		return true;
 	}
