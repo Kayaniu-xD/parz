@@ -10,6 +10,7 @@ import net.parz.config.ParzConfigDefinition;
 import net.parz.dashboard.DashboardData;
 import net.parz.dashboard.DashboardTracker;
 import net.parz.dungeon.DungeonMap;
+import net.parz.fishing.TrophyFrogs;
 import net.parz.gui.HudEditorScreen;
 import net.parz.skyblock.SkyBlockDetector;
 
@@ -21,6 +22,7 @@ import java.util.Locale;
  */
 public final class HudTrackers {
 	public static final String MAP_KEY = "dungeon_map";
+	public static final String FROG_KEY = "trophy_frogs";
 	public static final int WIDTH = 150;
 	public static final int HEIGHT = 41;
 	public static final float MIN_SCALE = 0.5f;
@@ -67,18 +69,23 @@ public final class HudTrackers {
 	}
 
 	public static int scaledWidth(String key) {
-		return Math.round((MAP_KEY.equals(key) ? DungeonMap.width() : WIDTH) * scale(key));
+		int width = MAP_KEY.equals(key) ? DungeonMap.width() : FROG_KEY.equals(key) ? TrophyFrogs.width() : WIDTH;
+		return Math.round(width * scale(key));
 	}
 
 	public static int scaledHeight(String key) {
-		return Math.round((MAP_KEY.equals(key) ? DungeonMap.height() : HEIGHT) * scale(key));
+		int height = MAP_KEY.equals(key) ? DungeonMap.height() : FROG_KEY.equals(key) ? TrophyFrogs.height() : HEIGHT;
+		return Math.round(height * scale(key));
 	}
 
-	/** Everything the HUD editor can move: the pinned trackers and the dungeon map. */
+	/** Everything the HUD editor can move: the pinned trackers, the dungeon map and the trophy frogs. */
 	public static List<String> editorKeys() {
 		List<String> keys = new java.util.ArrayList<>(DashboardData.get().hudPinned);
 		if (ParzConfigDefinition.DUNGEON_MAP.isEnabled()) {
 			keys.add(MAP_KEY);
+		}
+		if (ParzConfigDefinition.TROPHY_FROGS.isEnabled()) {
+			keys.add(FROG_KEY);
 		}
 		return keys;
 	}
@@ -97,6 +104,9 @@ public final class HudTrackers {
 			x = screenW - scaledWidth(key) - 4; // the dungeon map starts in the top right corner
 			y = 4;
 		}
+		if (FROG_KEY.equals(key) && pos == null) {
+			y = (screenH - scaledHeight(key)) / 2; // the frog list starts at the left, in the middle
+		}
 		x = Math.max(0, Math.min(screenW - scaledWidth(key), x));
 		y = Math.max(0, Math.min(screenH - scaledHeight(key), y));
 		return new int[]{x, y};
@@ -110,6 +120,8 @@ public final class HudTrackers {
 		graphics.pose().scale(scale, scale);
 		if (MAP_KEY.equals(key)) {
 			DungeonMap.drawUnscaled(graphics, font, 0, 0, Minecraft.getInstance().gui.screen() instanceof HudEditorScreen);
+		} else if (FROG_KEY.equals(key)) {
+			TrophyFrogs.drawUnscaled(graphics, font, 0, 0);
 		} else {
 			drawUnscaled(graphics, font, key, 0, 0);
 		}

@@ -125,6 +125,13 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   tag disappears, and reads your drops from the "DROP!" chat lines and from the items that arrive in your
   inventory. Try it with `/pz fishing`.
 
+- **Trophy Froggs**: on the Lotus Atoll, while you hold a water fishing rod, a list of all twelve trophy frogs sorted by
+  rarity, with how many you caught and a check mark or a red cross for bronze, silver, gold and diamond. Open the menu
+  of **Researcher Ribery** once and Parz reads what you already have (until then unknown tiers show a ?). Every catch
+  after that is counted from the "TROPHY FROG!" chat message. Move and resize the list with `/pz hud`. The numbers are
+  saved per Minecraft account in `config/parz-frogs.json`; after switching your SkyBlock profile, open Ribery's menu
+  again.
+
 ### Other
 - **Badge / name**: every player who uses Parz is shown as `[ዞ] Name` (red brackets and name, gold symbol) in the tab
   list, in the scoreboard (for example the party list in a dungeon), in the chat, above the head and in the "Spawned by: Name" line above a slayer boss, so you can see who else has
@@ -150,7 +157,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   the SkyBlock wiki), drawn as the dye items of the game (heads with the texture of the dye). The first entries are the **animated dyes** (Aurora, Rose, Portal, Lucky, ... 27 of them): the piece changes its
   color the way the dye does, for everybody with Parz (the colors are the frames of the public SkyBlock item repository, 20 per second). "Same color on all pieces" copies the
   color of the selected slot to the other two. Your choice is saved at once in `config/parz-armor.json` and sent to
-  the registry, so every Parz user sees it within about a minute, and it is still there the next time you start the
+  the registry, so every Parz user sees it within a minute or two, and it is still there the next time you start the
   game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot
   that is not empty, and your chosen colors win over the dye the armor already has. It also works when the Catharsis mod draws custom SkyBlock armor models: for the slots you chose
   something for, Parz switches those custom models off so your head and colors show instead.

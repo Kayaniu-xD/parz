@@ -51,6 +51,7 @@ public class ParzClient implements ClientModInitializer {
 		Debug.register();
 		net.parz.hollows.NucleusSlot.register();
 		net.parz.fishing.FishingPuzzle.register();
+		net.parz.fishing.TrophyFrogs.register();
 		net.parz.badge.BadgeConfig.load();
 		net.parz.badge.BadgePresets.load();
 		net.parz.armor.ArmorConfig.load();
@@ -177,7 +178,7 @@ public class ParzClient implements ClientModInitializer {
 	private static final String[][] COMMANDS = {
 			{"pz", "Opens the settings menu"},
 			{"pz dash", "Opens the dashboard with your skills, collections and playtime"},
-			{"pz hud", "Move and resize the HUD elements (trackers, dungeon map)"},
+			{"pz hud", "Move and resize the HUD elements (trackers, dungeon map, trophy frogs)"},
 			{"pz dungeon", "Shows what the dungeon scanner sees right now (for bug reports)"},
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},

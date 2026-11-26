@@ -140,6 +140,12 @@ public final class ParzConfigDefinition {
 			"When Lord Jawbus, Thunder or Ragnarok is dead, a memory board shows all the loot it can drop. The cards of everything you did not get are turned around, your drops stay open. Try it with /pz fishing.",
 			true);
 
+	public static final Toggle TROPHY_FROGS = FISHING.toggle(
+			"fishing.trophy_frogs",
+			"Trophy Froggs",
+			"On the Lotus Atoll, while you hold a water fishing rod: a list of all trophy frogs with the tiers (bronze, silver, gold, diamond) you have and are missing. Open the menu of Researcher Ribery once to read your numbers; new catches are counted from the chat. Move it with /pz hud.",
+			true);
+
 	// ---- Update --------------------------------------------------------------------
 	public static final Category UPDATE = updateCategory("Update", "Check for a new Parz version and install it from GitHub.");
 
