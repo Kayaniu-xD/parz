@@ -113,19 +113,31 @@ public final class CollectionTracker {
 			}
 			String text = clean(message.getString()).trim();
 			detectTrade(text);
-			// the end-of-run summary of a dungeon is ONE chat message with many lines ("-----", "Master Mode - M7",
-			// "Defeated ... in ...", ...): every line is checked on its own
-			for (String line : text.split("\\R")) {
-				String trimmed = line.trim();
-				if (!trimmed.isEmpty()) {
-					detectDungeon(trimmed);
-				}
-			}
 			if (text.startsWith("[Sacks]")) {
 				onSackMessage(message, text);
 			}
 		}));
 		ClientTickEvents.END_CLIENT_TICK.register(net.parz.Debug.tick("collections tick", CollectionTracker::onTick));
+	}
+
+	/**
+	 * A chat message as the server sent it, also one that another mod hides (see ServerChatMixin). Dungeon runs are
+	 * counted from here, because some mods replace the summary at the end of a run with their own.
+	 */
+	public static void onServerMessage(Component message) {
+		net.parz.Debug.guard("dungeon chat", () -> {
+			if (!enabled()) {
+				return;
+			}
+			// the end-of-run summary of a dungeon is ONE chat message with many lines ("-----", "Master Mode - M7",
+			// "Defeated ... in ...", ...): every line is checked on its own
+			for (String line : clean(message.getString()).split("\\R")) {
+				String trimmed = line.trim();
+				if (!trimmed.isEmpty()) {
+					detectDungeon(trimmed);
+				}
+			}
+		});
 	}
 
 	private static boolean enabled() {

@@ -7,6 +7,7 @@
 		"SkyBlockMenuMixin",
 		"PetsMenuMixin",
 		"DragonPacketsMixin",
+		"ServerChatMixin",
 		"HurtShakeMixin",
 		"TabBadgeMixin",
 		"NameTagBadgeMixin",
