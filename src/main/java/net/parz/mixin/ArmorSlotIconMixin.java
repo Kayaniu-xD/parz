@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /**
- * The four armor slots of your own inventory show the look you chose with /pz customarmor (the head you picked, the dyed
+ * The four armor slots of your own inventory show the look you chose with /pz custom (the head you picked, the dyed
  * leather pieces) instead of the real armor, like the player model next to them. Only the picture of the slot is changed:
  * the tooltip, clicking and the real item are not.
  */

@@ -54,6 +54,7 @@ public class ParzClient implements ClientModInitializer {
 		net.parz.badge.BadgeConfig.load();
 		net.parz.badge.BadgePresets.load();
 		net.parz.armor.ArmorConfig.load();
+		net.parz.item.ItemLooks.load();
 		net.parz.badge.ModUsers.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
@@ -124,7 +125,7 @@ public class ParzClient implements ClientModInitializer {
 							.then(ClientCommands.literal("json").then(ClientCommands.argument("text", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(context -> {
 								return nameJson(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "text"));
 							}))))
-					.then(ClientCommands.literal("customarmor")
+					.then(ClientCommands.literal("custom")
 							.executes(context -> {
 								screenToOpen = net.parz.gui.ArmorScreen::new;
 								return 1;
@@ -135,7 +136,8 @@ public class ParzClient implements ClientModInitializer {
 										.withStyle(net.minecraft.ChatFormatting.GREEN));
 								return 1;
 							}))
-							.then(ClientCommands.argument("color", com.mojang.brigadier.arguments.StringArgumentType.word()).executes(context -> {
+							// greedy: a single word cannot contain the "#" of #RRGGBB
+							.then(ClientCommands.argument("color", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(context -> {
 								return armorColor(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "color"));
 							})))
 					.then(ClientCommands.literal("help").executes(context -> {
@@ -180,7 +182,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
 			{"pz customname", "Choose how your name looks to other Parz users (menu, or /pz customname json <json>)"},
-			{"pz customarmor", "Menu to choose your head (any SkyBlock head) and armor colors that other Parz users see (/pz customarmor #RRGGBB, reset to clear)"},
+			{"pz custom", "Menu for your armor (head and colors other Parz users see; /pz custom #RRGGBB, reset to clear) and your items (name, model, glint; only you see these)"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};
@@ -220,7 +222,7 @@ public class ParzClient implements ClientModInitializer {
 		return 1;
 	}
 
-	/** /pz customarmor <#RRGGBB>: one color for your chestplate, leggings and boots, seen by other Parz users. */
+	/** /pz custom <#RRGGBB>: one color for your chestplate, leggings and boots, seen by other Parz users. */
 	private static int armorColor(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, String text) {
 		int rgb;
 		try {
@@ -231,7 +233,7 @@ public class ParzClient implements ClientModInitializer {
 			return 0;
 		}
 		net.parz.armor.ArmorConfig.set(net.parz.armor.ArmorConfig.look().withAllColors(rgb));
-		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your chestplate, leggings and boots. Use /pz customarmor for the menu.")
+		source.sendFeedback(net.minecraft.network.chat.Component.literal("[Parz] Saved. Other Parz users now see this color on your chestplate, leggings and boots. Use /pz custom for the menu.")
 				.withStyle(net.minecraft.ChatFormatting.GREEN));
 		return 1;
 	}

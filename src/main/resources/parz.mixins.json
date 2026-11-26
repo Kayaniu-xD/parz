@@ -17,6 +17,13 @@
 		"ArmorLookRenderMixin",
 		"ArmorLookSubmitMixin",
 		"ArmorSlotIconMixin",
+		"CustomDataAccessor",
+		"EditBoxAccessor",
+		"ItemModelListAccessor",
+		"ItemStackLookMixin",
+		"HeldItemNameMixin",
+		"ItemModelLookMixin",
+		"ItemHeadLookMixin",
 		"WindowTitleMixin",
 		"WindowSetTitleMixin"
 	],

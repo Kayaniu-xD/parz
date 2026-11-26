@@ -28,8 +28,8 @@ public class NameScreen extends Screen {
 	private static final int PANEL_W = 340;
 	private static final int PANEL_H = 312;
 	/** The color wheel: a picture of 84x84 pixels (hue around, white in the middle) made once. */
-	private static final int WHEEL = 84;
-	private static Identifier wheelTexture = null;
+	static final int WHEEL = 84;
+	static Identifier wheelTexture = null;
 	private static final int CELL_H = 16;
 
 	private boolean json;
@@ -276,7 +276,7 @@ public class NameScreen extends Screen {
 		return String.format("#%06X", rgb);
 	}
 
-	private static int hsvToRgb(float h, float s, float v) {
+	static int hsvToRgb(float h, float s, float v) {
 		float hh = (h - (float) Math.floor(h)) * 6f;
 		int sector = (int) Math.floor(hh);
 		float f = hh - sector;
@@ -297,7 +297,7 @@ public class NameScreen extends Screen {
 		return (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
 	}
 
-	private static float[] rgbToHsv(int rgb) {
+	static float[] rgbToHsv(int rgb) {
 		float r = ((rgb >> 16) & 255) / 255f;
 		float g = ((rgb >> 8) & 255) / 255f;
 		float b = (rgb & 255) / 255f;
@@ -322,7 +322,7 @@ public class NameScreen extends Screen {
 	}
 
 	/** The wheel picture: red at the top, then around like the rainbow, white in the middle. */
-	private static void ensureWheelTexture() {
+	static void ensureWheelTexture() {
 		if (wheelTexture != null) {
 			return;
 		}

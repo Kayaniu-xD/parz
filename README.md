@@ -42,7 +42,7 @@ Parz updates itself from the GitHub releases.
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
 | `/pz customname` | Menu to choose how your name looks to other Parz users (also `/pz customname json <text component>` and `/pz customname reset`) |
-| `/pz customarmor` | Menu to choose your head (any SkyBlock head item) and the colors of your armor for other Parz users (also `/pz customarmor #RRGGBB` and `/pz customarmor reset`) |
+| `/pz custom` | Menu with two tabs: **Armor** (head and armor colors for other Parz users; also `/pz custom #RRGGBB` and `/pz custom reset` for the armor) and **Item** (name, model and glint of your items) |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -137,7 +137,7 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   UUID** and the chosen name format to a small registry (see [server/](server/)) while you are in a world and reads
   the list of the others; nothing else is sent (no IP address is stored, no server, no chat). Entries disappear 7
   minutes after the last report. If the registry is not reachable, only your own account (and `Pay2Loze`) get the badge.
-- **Custom armor** (`/pz customarmor`): a menu with a preview of your player. Pick a slot under the preview and click
+- **Custom armor** (`/pz custom`, tab **Armor**): a menu with a preview of your player. Pick a slot under the preview and click
   what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) is shown
   instead of your helmet; the list comes from the public Hypixel items API, is saved in `config/parz-heads.json` and
   can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
@@ -150,6 +150,15 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot
   that is not empty, and your chosen colors win over the dye the armor already has. It also works when the Catharsis mod draws custom SkyBlock armor models: for the slots you chose
   something for, Parz switches those custom models off so your head and colors show instead.
+- **Custom items** (`/pz custom`, tab **Item**; like the item customization of Skyblocker): **Select Item** picks an
+  item of your inventory (only SkyBlock items with an own ID: weapons, tools, armor, accessories). **Glint** switches the
+  enchantment glint (Default / On / Off). **Select Model** shows every item model of the game and your resource packs
+  and every SkyBlock head; a model id can also be typed into **Item Model Override**. The name editor changes the
+  name: bold, italic, underline, strikethrough and obfuscated, the 16 Minecraft colors, any color (**Custom**) and
+  gradients; it works on the marked letters, or on the whole name if nothing is marked. An empty name field gives the
+  item its normal name back, **Reset item** removes everything. The changes belong to exactly that item, are saved in
+  `config/parz-items.json` and are shown **only on your screen** (tooltips, the name above the hotbar, the item in
+  menus and in your hand). The real item is not changed and nothing is sent anywhere.
 - **Window title** (General settings **Vanilla Window Title** / **Fabric Window Title**): some clients rename the game
   window (for example to "Nebula Client 2.5.10"). Parz forces the title Minecraft itself would use. **Fabric Window
   Title** is on by default and gives the title of a modded game (`Minecraft* 26.2`, the star is added when mods like

@@ -29,7 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * /pz customarmor - how your armor looks to the other Parz users. Pick a slot below the preview (helmet,
+ * The "Armor" tab of /pz custom - how your armor looks to the other Parz users. Pick a slot below the preview (helmet,
  * chestplate, leggings, boots) and click what you want in the grid: for the helmet any SkyBlock head (armor heads,
  * minions, ...), for the other slots a color (the piece is then drawn as leather armor in that color). A click is saved
  * at once and sent to the registry, so everybody sees it; the preview shows it right away.
@@ -237,11 +237,7 @@ public class ArmorScreen extends Screen {
 			graphics.text(font, Component.literal("Search...").withStyle(ChatFormatting.ITALIC), search.getX() + 4, search.getY() + 5, 0xFF8B8B8B, false);
 		}
 
-		// the tab
-		graphics.fill(px + PAD, py + 8, px + PAD + 62, py + 24, 0xFF6A7088);
-		graphics.centeredText(font, "Armor", px + PAD + 31, py + 12, TEXT);
-		graphics.fill(px + PAD + 6, py + 22, px + PAD + 56, py + 23, TEXT);
-		graphics.text(font, "Everyone with Parz sees this", px + PANEL_W - PAD - font.width("Everyone with Parz sees this"), py + 12, TEXT_DIM, false);
+		CustomUi.tabs(graphics, font, px, py, CustomUi.ARMOR_TAB, "Everyone with Parz sees this", mouseX, mouseY);
 
 		drawPreview(graphics, mouseX, mouseY);
 		drawSlots(graphics, mouseX, mouseY);
@@ -417,6 +413,9 @@ public class ArmorScreen extends Screen {
 		if (event.button() == 0) {
 			double mx = event.x();
 			double my = event.y();
+			if (CustomUi.clickTab(mx, my, px, py, CustomUi.ARMOR_TAB)) {
+				return true;
+			}
 			for (int i = 0; i < SLOTS.length; i++) {
 				if (inside(mx, my, slotX(i), slotY(), SLOT, SLOT)) {
 					slot = i;

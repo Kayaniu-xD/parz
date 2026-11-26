@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * YOUR armor look (see {@link ArmorLook}): chosen in /pz customarmor, saved in config/parz-armor.json and sent to
+ * YOUR armor look (see {@link ArmorLook}): chosen in /pz custom, saved in config/parz-armor.json and sent to
  * the registry at once, so every other Parz user sees it. A change is saved for good: it is there again the next
  * time you start the game and for everybody who is online.
  */

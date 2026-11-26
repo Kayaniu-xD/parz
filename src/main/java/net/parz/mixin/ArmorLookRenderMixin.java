@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import java.util.Optional;
 
 /**
- * Other Parz users see the armor look you chose with /pz customarmor: your head instead of the helmet and your
+ * Other Parz users see the armor look you chose with /pz custom: your head instead of the helmet and your
  * colors on the chestplate, leggings and boots. A colored piece is drawn as dyed leather armor, whatever the real
  * armor is: Minecraft only dyes armor whose equipment model can be dyed, and armor from SkyBlock (or iron, diamond,
  * ...) uses its own model, so a dye on the item alone would change nothing.
