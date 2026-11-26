@@ -161,7 +161,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   the registry, so every Parz user sees it within a minute or two, and it is still there the next time you start the
   game. The registry only stores the texture of the head and the colors. The custom head only replaces a helmet slot
   that is not empty, and your chosen colors win over the dye the armor already has. It also works when the Catharsis mod draws custom SkyBlock armor models: for the slots you chose
-  something for, Parz switches those custom models off so your head and colors show instead.
+  something for, Parz switches those custom models off so your head and colors show instead. A color chosen in Parz
+  also wins over a dye you set for the piece in Skyblocker.
 - **Custom items** (`/pz custom`, tab **Item**; like the item customization of Skyblocker): **Select Item** picks an
   item of your inventory (only SkyBlock items with an own ID: weapons, tools, armor, accessories). **Glint** switches the
   enchantment glint (Default / On / Off). **Select Model** shows every item model of the game and your resource packs

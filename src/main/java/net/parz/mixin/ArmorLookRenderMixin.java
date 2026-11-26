@@ -7,16 +7,13 @@ import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.DyedItemColor;
-import net.minecraft.world.item.equipment.EquipmentAssets;
-import net.minecraft.world.item.equipment.Equippable;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.ArmorLookHolder;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-
-import java.util.Optional;
 
 /**
  * Other Parz users see the armor look you chose with /pz custom: your head instead of the helmet and your
@@ -53,23 +50,20 @@ public abstract class ArmorLookRenderMixin {
 			if (rgb == null) {
 				return itemStack;
 			}
-			ItemStack copy = itemStack.copy();
-			Equippable equippable = copy.get(DataComponents.EQUIPPABLE);
-			if (equippable != null && !Optional.of(EquipmentAssets.LEATHER).equals(equippable.assetId())) {
-				// the same piece of armor, but with the (dyeable) leather model
-				copy.set(DataComponents.EQUIPPABLE, new Equippable(equippable.slot(), equippable.equipSound(),
-						Optional.of(EquipmentAssets.LEATHER), equippable.cameraOverlay(), equippable.allowedEntities(),
-						equippable.dispensable(), equippable.swappable(), equippable.damageOnHurt(),
-						equippable.equipOnInteract(), equippable.canBeSheared(), equippable.shearingSound()));
+			if (itemStack.get(DataComponents.EQUIPPABLE) == null) {
+				return itemStack; // nothing that is drawn as armor
 			}
-			copy.remove(DataComponents.TRIM);
-			// Animated dyes (and custom armor models of resource packs / other mods) are looked up by the data of the item
-			// (its SkyBlock id, the dye it carries, custom model data), not by the color: without this data the copy is plain
-			// dyed leather armor, and the animation (or the other mod) cannot take the color away again
-			copy.remove(DataComponents.CUSTOM_DATA);
-			copy.remove(DataComponents.CUSTOM_MODEL_DATA);
-			copy.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
-			return copy;
+			// A NEW piece of leather armor, never a copy of the real one. Other mods find "their" armor by the data of the
+			// item (a dye set for it in Skyblocker, its SkyBlock ID, the dye it carries) and put their own color or model on
+			// it; Skyblocker even remembers the ID of a copy after that data was removed. A new item has nothing to find,
+			// so the color chosen in Parz is the one that is drawn.
+			ItemStack plain = new ItemStack(slot == EquipmentSlot.CHEST ? Items.LEATHER_CHESTPLATE
+					: slot == EquipmentSlot.LEGS ? Items.LEATHER_LEGGINGS : Items.LEATHER_BOOTS);
+			plain.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
+			if (itemStack.hasFoil()) {
+				plain.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+			}
+			return plain;
 		} catch (RuntimeException e) {
 			return itemStack;
 		}
