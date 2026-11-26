@@ -6,13 +6,17 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 import net.parz.Debug;
 import net.parz.armor.ArmorLook;
 import net.parz.mixin.CustomDataAccessor;
+import net.parz.share.LookSync;
+import net.parz.share.SharedLooks;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -25,13 +29,15 @@ import java.util.Map;
 /**
  * Your item changes (see {@link ItemLook}), chosen in the "Item" tab of /pz custom and saved in
  * config/parz-items.json. An item is recognised by the own ID SkyBlock gives it (the "uuid" in its data), so a
- * change stays with exactly that item wherever it is. Everything happens on your screen only: the item itself is
- * never changed and nothing is sent anywhere.
+ * change stays with exactly that item wherever it is. The item itself is never changed. Your changes are shared with
+ * the other Parz users (see net.parz.share), and theirs are shown to you here as well.
  */
 public final class ItemLooks {
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("parz-items.json");
 
 	private static volatile Map<String, ItemLook> looks = Map.of();
+	/** The SkyBlock kind of the changed items (by their ID). */
+	private static volatile Map<String, String> ids = Map.of();
 
 	private ItemLooks() {
 	}
@@ -47,14 +53,47 @@ public final class ItemLooks {
 		return uuid.isEmpty() ? null : uuid;
 	}
 
-	/** The changes of this item, or null if it has none. */
+	/** The SkyBlock kind of an item ("HYPERION"), or null. */
+	public static String skyblockIdOf(ItemStack stack) {
+		CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+		if (data == null) {
+			return null;
+		}
+		String id = ((CustomDataAccessor) (Object) data).parz$tag().getStringOr("id", "");
+		return id.isEmpty() ? null : id;
+	}
+
+	/** The changes of this item: yours, or those another Parz user shares for it; null if there are none. */
 	public static ItemLook of(ItemStack stack) {
 		Map<String, ItemLook> now = looks;
-		if (now.isEmpty()) {
+		if (now.isEmpty() && !SharedLooks.hasItems()) {
 			return null;
 		}
 		String uuid = uuidOf(stack);
-		return uuid == null ? null : now.get(uuid);
+		String holder = SharedLooks.renderOwner();
+		if (uuid == null) {
+			// in the hand of another player the game may not tell the ID: their item of the same kind
+			return holder == null ? null : SharedLooks.itemOfKind(holder, skyblockIdOf(stack));
+		}
+		ItemLook own = now.get(uuid);
+		if (own != null && holder == null) {
+			return own;
+		}
+		if (SharedLooks.carriedByYou(uuid)) {
+			return own; // an item of yours only shows your own choice
+		}
+		ItemLook shared = SharedLooks.item(uuid, holder);
+		return shared != null ? shared : own;
+	}
+
+	/** All your changes, by the ID of the item. */
+	public static Map<String, ItemLook> all() {
+		return looks;
+	}
+
+	/** The SkyBlock kind of one of your changed items, or null. */
+	public static String idOf(String uuid) {
+		return ids.get(uuid);
 	}
 
 	/** The custom name of this item, or null. */
@@ -77,7 +116,39 @@ public final class ItemLooks {
 			next.put(uuid, look);
 		}
 		looks = Map.copyOf(next);
+		rememberId(uuid);
 		write();
+		LookSync.changed();
+	}
+
+	/** Notes the kind of the item with this ID while you carry it. */
+	private static void rememberId(String uuid) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.player == null) {
+			return;
+		}
+		Inventory inventory = client.player.getInventory();
+		for (int i = 0; i < inventory.getContainerSize(); i++) {
+			if (uuid.equals(uuidOf(inventory.getItem(i)))) {
+				noteKind(uuid, inventory.getItem(i));
+				return;
+			}
+		}
+	}
+
+	/** An item you carry: if you changed it and its kind is not known yet, it is noted (and sent with the change). */
+	public static synchronized void noteKind(String uuid, ItemStack stack) {
+		if (!looks.containsKey(uuid) || ids.containsKey(uuid)) {
+			return;
+		}
+		String id = skyblockIdOf(stack);
+		if (id != null) {
+			Map<String, String> next = new HashMap<>(ids);
+			next.put(uuid, id);
+			ids = Map.copyOf(next);
+			write();
+			LookSync.changed();
+		}
 	}
 
 	public static void load() {
@@ -87,17 +158,23 @@ public final class ItemLooks {
 			}
 			JsonObject json = JsonParser.parseString(Files.readString(FILE, StandardCharsets.UTF_8)).getAsJsonObject();
 			Map<String, ItemLook> next = new HashMap<>();
+			Map<String, String> nextIds = new HashMap<>();
 			for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
 				try {
-					ItemLook look = read(entry.getValue().getAsJsonObject());
+					JsonObject item = entry.getValue().getAsJsonObject();
+					ItemLook look = read(item);
 					if (!look.isEmpty()) {
 						next.put(entry.getKey(), look);
+						if (item.has("id")) {
+							nextIds.put(entry.getKey(), item.get("id").getAsString());
+						}
 					}
 				} catch (RuntimeException e) {
 					Debug.error("item config entry", e); // the other items are still loaded
 				}
 			}
 			looks = Map.copyOf(next);
+			ids = Map.copyOf(nextIds);
 		} catch (Exception e) {
 			Debug.error("item config", e);
 		}
@@ -126,6 +203,9 @@ public final class ItemLooks {
 			JsonObject json = new JsonObject();
 			looks.forEach((uuid, look) -> {
 				JsonObject item = new JsonObject();
+				if (ids.containsKey(uuid)) {
+					item.addProperty("id", ids.get(uuid));
+				}
 				if (look.model() != null) {
 					item.addProperty("model", look.model());
 				}

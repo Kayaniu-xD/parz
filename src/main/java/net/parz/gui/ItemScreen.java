@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * The "Item" tab of /pz custom (like the item customization of Skyblocker): pick one of your SkyBlock items and
- * change its glint, its model and its name. Everything is saved at once and only changes your own screen.
+ * change its glint, its model and its name. Everything is saved at once and shared with the other Parz users.
  */
 public class ItemScreen extends Screen {
 	private static final int SWATCH = 14;
@@ -321,7 +321,7 @@ public class ItemScreen extends Screen {
 			load();
 		}
 		CustomUi.panel(graphics, px, py, CustomUi.PANEL_W, CustomUi.PANEL_H);
-		CustomUi.tabs(graphics, font, px, py, CustomUi.ITEM_TAB, "Only you see your item changes", mouseX, mouseY);
+		CustomUi.tabs(graphics, font, px, py, CustomUi.ITEM_TAB, "Everyone with Parz sees this", mouseX, mouseY);
 
 		int x = px + CustomUi.PAD;
 		CustomUi.box(graphics, x, topY(), boxW(), 66);

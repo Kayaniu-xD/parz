@@ -57,6 +57,7 @@ public class ParzClient implements ClientModInitializer {
 		net.parz.armor.ArmorConfig.register();
 		net.parz.item.ItemLooks.load();
 		net.parz.badge.ModUsers.register();
+		net.parz.share.LookSync.register();
 		DashboardTracker.register();
 		CollectionTracker.register();
 		HudTrackers.register();
@@ -183,7 +184,7 @@ public class ParzClient implements ClientModInitializer {
 			{"pz nucleus", "Shows the Nucleus slot machine as a test (add 'alloy' for the jackpot)"},
 			{"pz fishing", "Shows the fishing loot memory as a test (add jawbus, thunder or ragnarok)"},
 			{"pz customname", "Choose how your name looks to other Parz users (menu, or /pz customname json <json>)"},
-			{"pz custom", "Menu for single armor pieces (head and colors other Parz users see; /pz custom #RRGGBB for the worn ones, reset clears all) and your items (name, model, glint; only you see these)"},
+			{"pz custom", "Menu for single armor pieces (head and colors other Parz users see; /pz custom #RRGGBB for the worn ones, reset clears all) and your items (name, model, glint); other Parz users see both"},
 			{"pz update", "Installs the newest Parz version from GitHub"},
 			{"pz help", "Shows this list"}
 	};

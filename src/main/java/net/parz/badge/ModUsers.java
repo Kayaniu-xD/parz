@@ -145,6 +145,11 @@ public final class ModUsers {
 		return names;
 	}
 
+	/** The address of the registry (empty = none). */
+	public static String registryUrl() {
+		return url();
+	}
+
 	private static String url() {
 		try {
 			if (Files.exists(OVERRIDE)) {

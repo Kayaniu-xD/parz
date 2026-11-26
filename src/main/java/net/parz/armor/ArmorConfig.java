@@ -18,6 +18,7 @@ import net.minecraft.world.item.component.CustomData;
 import net.parz.Debug;
 import net.parz.badge.ModUsers;
 import net.parz.mixin.CustomDataAccessor;
+import net.parz.share.LookSync;
 import net.parz.skyblock.SkyBlockDetector;
 
 import java.nio.charset.StandardCharsets;
@@ -100,6 +101,16 @@ public final class ArmorConfig {
 	public static String wornName(EquipmentSlot slot) {
 		ItemStack stack = worn(slot);
 		return stack.isEmpty() ? null : stack.getHoverName().getString().replaceAll("§.", "").trim();
+	}
+
+	/** All your choices, by the key of the piece. */
+	public static Map<String, Piece> pieces() {
+		return pieces;
+	}
+
+	/** Your choice for the piece with this key, or null. */
+	public static Piece piece(String key) {
+		return pieces.get(key);
 	}
 
 	private static Piece pieceIn(EquipmentSlot slot) {
@@ -207,6 +218,7 @@ public final class ArmorConfig {
 	private static void save(Map<String, Piece> next) {
 		pieces = Map.copyOf(next);
 		write();
+		LookSync.changed();
 		// your own choice is sent at once
 		report(look());
 	}

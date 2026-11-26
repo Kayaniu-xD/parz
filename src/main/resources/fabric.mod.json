@@ -17,7 +17,8 @@
 	},
 	"mixins": [
 		"parz.mixins.json",
-		"parz.skyhanni.mixins.json"
+		"parz.skyhanni.mixins.json",
+		"parz.betterpv.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.19.0",

@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
+import net.parz.share.AvatarLooks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -27,8 +28,13 @@ public abstract class ArmorSlotIconMixin {
 	)
 	private ItemStack parz$armorIcon(ItemStack stack, GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY) {
 		try {
-			if (stack.isEmpty() || !(slot.container instanceof Inventory inventory) || inventory.player != Minecraft.getInstance().player) {
+			if (stack.isEmpty()) {
 				return stack;
+			}
+			if (!(slot.container instanceof Inventory inventory) || inventory.player != Minecraft.getInstance().player) {
+				// armor in a menu of the server (for example a profile viewer) shows the look chosen for that piece
+				ItemStack shown = AvatarLooks.armorIcon(stack);
+				return shown != null ? shown : stack;
 			}
 			EquipmentSlot equipment = switch (slot.getContainerSlot()) {
 				case 36 -> EquipmentSlot.FEET;

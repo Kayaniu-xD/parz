@@ -43,7 +43,7 @@ Parz updates itself from the GitHub releases.
 | `/pz nucleus` | Shows the Nucleus slot machine as a test (`/pz nucleus alloy` for the jackpot) |
 | `/pz fishing` | Shows the fishing loot memory as a test (`jawbus`, `thunder` or `ragnarok` to pick one) |
 | `/pz customname` | Menu to choose how your name looks to other Parz users (also `/pz customname json <text component>` and `/pz customname reset`) |
-| `/pz custom` | Menu with two tabs: **Armor** (head and colors per armor piece, seen by other Parz users; also `/pz custom #RRGGBB` for the pieces you wear and `/pz custom reset` for all pieces) and **Item** (name, model and glint of your items) |
+| `/pz custom` | Menu with two tabs: **Armor** (head and colors per armor piece; also `/pz custom #RRGGBB` for the pieces you wear and `/pz custom reset` for all pieces) and **Item** (name, model and glint of your items); other Parz users see both |
 | `/pz update` | Installs the newest version from GitHub |
 | `/pz help` | Lists all commands in the chat with a short description; click a command to run it |
 
@@ -172,8 +172,14 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
   name: bold, italic, underline, strikethrough and obfuscated, the 16 Minecraft colors, any color (**Custom**) and
   gradients; it works on the marked letters, or on the whole name if nothing is marked. An empty name field gives the
   item its normal name back, **Reset item** removes everything. The changes belong to exactly that item, are saved in
-  `config/parz-items.json` and are shown **only on your screen** (tooltips, the name above the hotbar, the item in
-  menus and in your hand). The real item is not changed and nothing is sent anywhere.
+  `config/parz-items.json` and show in tooltips, the name above the hotbar, menus and the hand. The real item is not
+  changed.
+- **Shared looks**: your item looks (Item tab) and armor piece looks (Armor tab) are shown to **other Parz users**
+  too: on the item in your hand, on the armor you wear, in server menus and in the profile viewer of BetterPV
+  (`/pv`: player model, armor sets, item icons and names). For this Parz sends the chosen name, model, glint, head and
+  color together with the item's own SkyBlock ID (and its kind) to the registry, which keeps them for 30 days after
+  they were last sent, so they also show while you are offline. Removing all your looks deletes them there. A custom
+  look takes the place of the look of the official Hypixel resource pack.
 - **Window title** (General settings **Vanilla Window Title** / **Fabric Window Title**): some clients rename the game
   window (for example to "Nebula Client 2.5.10"). Parz forces the title Minecraft itself would use. **Fabric Window
   Title** is on by default and gives the title of a modded game (`Minecraft* 26.2`, the star is added when mods like

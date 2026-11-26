@@ -1,0 +1,12 @@
+{
+	"required": false,
+	"package": "net.parz.compat.betterpv",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"BetterPvItemMixin",
+		"BetterPvIconMixin"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}
