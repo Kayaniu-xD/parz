@@ -97,7 +97,7 @@ final class ModelPickScreen extends Screen {
 
 	private void filter() {
 		String query = search.getValue().trim().toLowerCase(Locale.ROOT);
-		shown = query.isEmpty() ? all : all.stream().filter(choice -> choice.search().contains(query)).toList();
+		shown = query.isEmpty() ? all : all.stream().filter(choice -> HeadCatalog.containsWords(choice.search(), query)).toList();
 		scroll = Math.min(scroll, maxScroll());
 	}
 
@@ -117,7 +117,7 @@ final class ModelPickScreen extends Screen {
 		return icons.computeIfAbsent(choice.model() + "|" + choice.head(), key -> {
 			if (choice.head() != null) {
 				ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
-				stack.set(DataComponents.PROFILE, ArmorLook.profileFor(choice.head()));
+				stack.set(DataComponents.PROFILE, ArmorLook.stillProfileFor(choice.head()));
 				return stack;
 			}
 			if (choice.model() == null) {

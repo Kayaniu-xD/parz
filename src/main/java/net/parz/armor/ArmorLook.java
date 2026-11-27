@@ -71,9 +71,9 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 			return real;
 		}
 		if (slot == EquipmentSlot.HEAD) {
-			return skin == null ? real : HEAD_ICONS.computeIfAbsent(skin, h -> {
+			return skin == null ? real : HEAD_ICONS.computeIfAbsent(SkinList.now(skin), h -> {
 				ItemStack head = new ItemStack(Items.PLAYER_HEAD);
-				head.set(DataComponents.PROFILE, profileFor(h));
+				head.set(DataComponents.PROFILE, stillProfileFor(h));
 				return head;
 			});
 		}
@@ -130,8 +130,13 @@ public record ArmorLook(String skin, Integer chest, Integer legs, Integer feet) 
 		return hash != null && HASH.matcher(hash).matches();
 	}
 
-	/** The profile of the head with this texture; the same object every time, so Minecraft loads the skin only once. */
+	/** The profile to draw for this head right now: an animated skin gives the one of its current picture. */
 	public static ResolvableProfile profileFor(String hash) {
+		return stillProfileFor(SkinList.now(hash));
+	}
+
+	/** The profile of exactly this texture; the same object every time, so Minecraft loads the skin only once. */
+	public static ResolvableProfile stillProfileFor(String hash) {
 		return PROFILES.computeIfAbsent(hash, h -> {
 			String json = "{\"textures\":{\"SKIN\":{\"url\":\"http://textures.minecraft.net/texture/" + h + "\"}}}";
 			String value = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));

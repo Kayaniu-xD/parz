@@ -18,21 +18,39 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
- * Every SkyBlock item that is a head (all the "skull" items: armor heads, pets' items, minions, ...). The list comes
- * from the public Hypixel items API (no key needed) and is kept in config/parz-heads.json, so the menu opens at once
- * and works offline; it is fetched again when the saved list is older than a few days.
+ * Every SkyBlock item that is a head (all the "skull" items: armor heads, pets' items, minions, ...) and every skin.
+ * The items come from the public Hypixel items API (no key needed) and are kept in config/parz-heads.json, so the menu
+ * opens at once and works offline; they are fetched again when the saved list is older than a few days. The skins, which
+ * that API does not list, are part of Parz ({@link SkinList}).
  */
 public final class HeadCatalog {
 	/** One head: the SkyBlock item id, its name, the texture hash and the rarity (may be empty). */
 	public record Head(String id, String name, String hash, String tier) {
 		/** Lower-case text the search looks in. */
 		public String searchText() {
-			return (name + " " + id.replace('_', ' ')).toLowerCase(Locale.ROOT);
+			return (name + " " + id.replace('_', ' ') + (SkinList.isAnimated(hash) ? " animated" : "")).toLowerCase(Locale.ROOT);
 		}
+
+		/** True if every word of the (lower-case) search is found: "celest goldor" finds "Celestial Goldor's ...". */
+		public boolean matches(String query) {
+			return containsWords(searchText(), query);
+		}
+	}
+
+	/** True if every word of the query is somewhere in the text (an empty query always is). */
+	public static boolean containsWords(String text, String query) {
+		for (String word : query.split("\\s+")) {
+			if (!text.contains(word)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private static final String API = "https://api.hypixel.net/v2/resources/skyblock/items";
@@ -40,7 +58,10 @@ public final class HeadCatalog {
 	private static final long MAX_AGE_MS = 3L * 24 * 60 * 60 * 1000;
 	private static final String TEXTURE_PREFIX = "textures.minecraft.net/texture/";
 
+	/** The skins and the heads of the API. */
 	private static volatile List<Head> heads = List.of();
+	/** Only the heads of the API. */
+	private static volatile List<Head> official = List.of();
 	private static volatile String status = "Loading the heads...";
 	private static boolean started = false;
 
@@ -78,7 +99,23 @@ public final class HeadCatalog {
 		thread.start();
 	}
 
+	/** Puts the heads of the API together with the skins; a skin of the same item takes its place. */
+	private static void use(List<Head> fromApi) {
+		official = fromApi;
+		List<Head> all = new ArrayList<>(SkinList.skins());
+		Set<String> skins = new HashSet<>();
+		all.forEach(skin -> skins.add(skin.id()));
+		for (Head head : fromApi) {
+			if (!skins.contains(head.id())) {
+				all.add(head);
+			}
+		}
+		all.sort(Comparator.comparing((Head head) -> head.name().toLowerCase(Locale.ROOT)).thenComparing(Head::id));
+		heads = all;
+	}
+
 	private static void load() {
+		use(official); // the skins are there at once
 		long fetched = 0;
 		try {
 			if (Files.exists(FILE)) {
@@ -92,14 +129,14 @@ public final class HeadCatalog {
 					}
 				}
 				if (!list.isEmpty()) {
-					heads = list;
+					use(list);
 					fetched = saved.get("fetched").getAsLong();
 				}
 			}
 		} catch (Exception e) {
 			Debug.error("head list", e);
 		}
-		if (!heads.isEmpty() && System.currentTimeMillis() - fetched < MAX_AGE_MS) {
+		if (!official.isEmpty() && System.currentTimeMillis() - fetched < MAX_AGE_MS) {
 			return;
 		}
 		try {
@@ -108,7 +145,7 @@ public final class HeadCatalog {
 			Debug.error("head list", e);
 			status = "Could not load the heads (" + e.getMessage() + "). Reopen the menu to try again.";
 			synchronized (HeadCatalog.class) {
-				if (heads.isEmpty()) {
+				if (official.isEmpty()) {
 					started = false;
 				}
 			}
@@ -138,7 +175,7 @@ public final class HeadCatalog {
 			throw new IllegalStateException("the answer has no heads");
 		}
 		list.sort(Comparator.comparing((Head head) -> head.name().toLowerCase(Locale.ROOT)).thenComparing(Head::id));
-		heads = list;
+		use(list);
 
 		JsonObject saved = new JsonObject();
 		saved.addProperty("fetched", System.currentTimeMillis());

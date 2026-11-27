@@ -20,6 +20,7 @@ import net.parz.armor.ArmorConfig;
 import net.parz.armor.ArmorLook;
 import net.parz.armor.DyeIcons;
 import net.parz.armor.HeadCatalog;
+import net.parz.armor.SkinList;
 import net.parz.armor.StaticDyes;
 
 import java.util.ArrayList;
@@ -163,7 +164,7 @@ public class ArmorScreen extends Screen {
 			List<HeadCatalog.Head> heads = HeadCatalog.heads();
 			lastHeadCount = heads.size();
 			for (HeadCatalog.Head head : heads) {
-				if (query.isEmpty() || head.searchText().contains(query)) {
+				if (query.isEmpty() || head.matches(query)) {
 					list.add(new Entry(head, null, head.name()));
 				}
 			}
@@ -365,6 +366,9 @@ public class ArmorScreen extends Screen {
 		} else if (entry.head() != null) {
 			tip.add(Component.literal(entry.head().name()).withStyle(tierColor(entry.head().tier())));
 			tip.add(Component.literal(entry.head().id()).withStyle(ChatFormatting.DARK_GRAY));
+			if (SkinList.isAnimated(entry.head().hash())) {
+				tip.add(Component.literal("Animated skin (SkyBlock)").withStyle(ChatFormatting.LIGHT_PURPLE));
+			}
 		} else {
 			tip.add(Component.literal(entry.label()).withStyle(DyeIcons.color(entry.label())));
 			if (AnimatedDyes.isAnimated(entry.rgb())) {
@@ -395,7 +399,7 @@ public class ArmorScreen extends Screen {
 	private static ItemStack headIcon(String hash) {
 		return HEAD_ICONS.computeIfAbsent(hash, h -> {
 			ItemStack stack = new ItemStack(Items.PLAYER_HEAD);
-			stack.set(DataComponents.PROFILE, ArmorLook.profileFor(h));
+			stack.set(DataComponents.PROFILE, ArmorLook.stillProfileFor(h));
 			return stack;
 		});
 	}

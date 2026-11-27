@@ -152,9 +152,11 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 - **Custom armor** (`/pz custom`, tab **Armor**): every choice belongs to **one armor piece**, the one you wear in that
   slot (recognised by the own ID of the SkyBlock item). It shows while you wear that piece; other armor looks normal,
   so every set can have its own colors. The menu has a preview of your player. Pick a slot under the preview and click
-  what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) is shown
-  instead of your helmet; the list comes from the public Hypixel items API, is saved in `config/parz-heads.json` and
-  can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
+  what you want. **Helmet**: any SkyBlock item that is a head (armor heads, minions of every tier, and so on) or skin
+  (helmet skins like Celestial Goldor, pet skins and their variants) is shown instead of your helmet; animated skins
+  move, for everybody with Parz. The items come from the public Hypixel items API and are saved in
+  `config/parz-heads.json`; the skins are part of Parz and come from the public SkyBlock item repository, so new ones
+  arrive with a Parz update. The list can be searched by name. **Chestplate, leggings and boots**: a color, from the palette or typed as `#RRGGBB` in
   the search box (the piece is drawn as leather armor in that color, whatever armor you really wear, SkyBlock armor included).
   The menu lists the dyes of SkyBlock under their real names (Carmine Dye, Necron Dye, Pure White Dye, ...; 42 normal dyes, list of
   the SkyBlock wiki), drawn as the dye items of the game (heads with the texture of the dye). The first entries are the **animated dyes** (Aurora, Rose, Portal, Lucky, ... 27 of them): the piece changes its
@@ -194,6 +196,8 @@ The vanilla `/pets` chest menu is shown as a book (it can be switched off in the
 ## Credits and licenses
 
 - The list of pets comes from the [Hypixel SkyBlock wiki](https://hypixel-skyblock.fandom.com/).
+- The skins and their pictures come from the item repository of
+  [NotEnoughUpdates](https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO) (MIT license, included in the jar).
 - Parz is not affiliated with Hypixel or Mojang.
 
 Parz itself is not released under an open source license (all rights reserved).
